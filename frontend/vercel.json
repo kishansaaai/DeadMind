@@ -1,9 +1,7 @@
 {
-  "build": {
-    "env": {
-      "NITRO_PRESET": "vercel"
-    }
-  },
+  "buildCommand": "NITRO_PRESET=vercel npm run build",
+  "outputDirectory": ".vercel/output",
+  "framework": null,
   "rewrites": [
     {
       "source": "/api/(.*)",
