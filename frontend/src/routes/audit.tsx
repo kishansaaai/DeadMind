@@ -168,7 +168,7 @@ function SopTable() {
                     <td className="py-2 px-2">{r.step_desc}</td>
                     <td className="py-2 px-2">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-muted/40 border border-border">
+                        <div className="flex-1 h-2 bg-muted/40 border border-border overflow-hidden">
                           <div className="h-full" style={{ width: `${rate}%`, background: bar }} />
                         </div>
                         <Tag tone={tone}>{rate}%</Tag>
@@ -193,9 +193,9 @@ function SopTable() {
 }
 
 function freshnessGrade(d: HalfLifeDoc): { tone: "fire" | "gold" | "steel"; label: string; bg: string; icon: typeof Flame } {
-  if (d.status === "CRITICAL" || d.freshness_score < 0.34)
+  if (d.status?.includes("CRITICAL") || d.freshness_score < 0.34)
     return { tone: "fire", label: "CRITICAL DANGER", bg: "border-destructive/60 bg-destructive/10", icon: Flame };
-  if (d.status === "STALE" || d.freshness_score < 0.67)
+  if (d.status?.includes("STALE") || d.freshness_score < 0.67)
     return { tone: "gold", label: "STALE WARNING", bg: "border-primary/40 bg-primary/5", icon: FileWarning };
   return { tone: "steel", label: "FRESH", bg: "border-accent/50 bg-accent/5", icon: ShieldCheck };
 }
