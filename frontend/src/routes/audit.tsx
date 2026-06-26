@@ -228,7 +228,7 @@ function FreshnessHeatmap() {
           <Flame className="h-4 w-4 text-accent" />
           <h2 className="font-display uppercase tracking-wider text-lg">Knowledge Freshness Heatmap</h2>
         </div>
-        <div className="flex gap-1 text-[0.65rem] uppercase tracking-widest">
+        <div className="flex gap-1 text-[11px] uppercase tracking-widest">
           {(["all", "fresh", "stale", "critical"] as const).map((f) => (
             <button
               key={f}
@@ -254,10 +254,10 @@ function FreshnessHeatmap() {
                   <Icon className={`h-4 w-4 ${g.tone === "fire" ? "text-destructive" : g.tone === "gold" ? "text-primary" : "text-accent"}`} />
                 </div>
                 <div className="font-display text-sm leading-tight mb-1">{d.title}</div>
-                <div className="text-[0.65rem] text-muted-foreground uppercase tracking-widest mb-2">
+                <div className="text-xs text-muted-foreground uppercase tracking-widest mb-2">
                   {d.engineer_author} · {d.hardware_generation}
                 </div>
-                <div className="grid grid-cols-3 gap-1 text-[0.65rem]">
+                <div className="grid grid-cols-3 gap-1 text-xs">
                   <Stat2 label="Age" value={`${d.age_years}y`} />
                   <Stat2 label="Refs" value={d.reference_count} />
                   <Stat2 label="Conflicts" value={d.contradiction_count} danger={d.contradiction_count > 0} />
@@ -291,8 +291,8 @@ function FreshnessHeatmap() {
 function Stat2({ label, value, danger }: { label: string; value: string | number; danger?: boolean }) {
   return (
     <div className="border border-border/60 px-1.5 py-1">
-      <div className="text-muted-foreground uppercase tracking-widest">{label}</div>
-      <div className={`font-counter tabular-nums ${danger ? "text-destructive" : "text-foreground"}`}>{value}</div>
+      <div className="text-muted-foreground uppercase tracking-widest text-[10px]">{label}</div>
+      <div className={`font-counter tabular-nums text-xs ${danger ? "text-destructive" : "text-foreground"}`}>{value}</div>
     </div>
   );
 }
