@@ -23,6 +23,10 @@ function Audit() {
   const remainingYears = engs.filter((e) => e.retirement_year > year).map((e) => e.retirement_year - year);
   const khi = remainingYears.length === 0 ? 0.0 : parseFloat((remainingYears.reduce((a, b) => a + b, 0) / remainingYears.length).toFixed(1));
 
+  const baseFreshness = 65.3;
+  const currentFreshness = parseFloat(Math.max(20.0, baseFreshness - (year - 2026) * 4.5).toFixed(1));
+  const activeAnomalies = Math.round(1 + (year - 2026) * 0.6);
+
   return (
     <div>
       <PageHeader
@@ -47,15 +51,17 @@ function Audit() {
           />
           <Stat
             label="Avg Freshness"
-            value="65.3%"
-            tone="gold"
+            value={`${currentFreshness}%`}
+            tone={currentFreshness < 40 ? "fire" : currentFreshness < 60 ? "gold" : "steel"}
             hint="Documentation health score"
+            delta={year > 2026 ? -parseFloat(((baseFreshness - currentFreshness) / baseFreshness * 100).toFixed(1)) : undefined}
           />
           <Stat
             label="Active Anomalies"
-            value="1 Alert"
-            tone="fire"
+            value={`${activeAnomalies} Alert${activeAnomalies > 1 ? "s" : ""}`}
+            tone={activeAnomalies > 4 ? "fire" : activeAnomalies > 1 ? "gold" : "steel"}
             hint="Flagged in shift notes"
+            delta={year > 2026 ? (activeAnomalies - 1) * 100 : undefined}
           />
         </div>
         <ShiftNoteAnalyzer />
