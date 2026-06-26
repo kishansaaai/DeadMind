@@ -42,37 +42,30 @@ function CMMSSyncPanel() {
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Link2 className="h-4 w-4 text-primary" />
-          <h2 className="font-display uppercase tracking-wider text-lg">CMMS Sync Bench</h2>
+          <h2 className="font-display uppercase tracking-wider text-lg">Enterprise CMMS Integration</h2>
         </div>
         <p className="text-xs text-muted-foreground mb-4">
-          Synchronize active coreference mappings, resolved failure codes, and expert recommendations directly with your plant's Enterprise Asset Management systems.
+          DeadMind is designed to interface with existing Enterprise Asset Management (EAM) systems as a passive compliance layer.
         </p>
-        <div className="space-y-2 mt-4">
-          <button
-            type="button"
-            onClick={() => toast.success("Pushed 14 resolved coreference records to SAP PM")}
-            className="w-full bg-transparent border border-border text-foreground/80 hover:bg-accent/15 hover:text-foreground px-3 py-2.5 text-xs font-display uppercase tracking-wider cursor-pointer transition-colors"
-          >
-            Push to SAP PM
-          </button>
-          <button
-            type="button"
-            onClick={() => toast.success("Imported 52 historical maintenance sheets from IBM Maximo")}
-            className="w-full bg-transparent border border-border text-foreground/80 hover:bg-accent/15 hover:text-foreground px-3 py-2.5 text-xs font-display uppercase tracking-wider cursor-pointer transition-colors"
-          >
-            Pull from IBM Maximo
-          </button>
-          <button
-            type="button"
-            onClick={() => toast.success("Triggered compliance delta sync with Honeywell Forge")}
-            className="w-full bg-transparent border border-border text-foreground/80 hover:bg-accent/15 hover:text-foreground px-3 py-2.5 text-xs font-display uppercase tracking-wider cursor-pointer transition-colors"
-          >
-            Sync Honeywell Forge
-          </button>
+        
+        <div className="space-y-3 mt-4 text-xs">
+          <div className="border border-border/60 p-2 bg-muted/10">
+            <div className="font-semibold text-primary uppercase text-[10px] tracking-wider">SAP PM Connector (Roadmap)</div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Bi-directional RFC interface syncing resolved coreference tags to standard plant assets.</p>
+          </div>
+          <div className="border border-border/60 p-2 bg-muted/10">
+            <div className="font-semibold text-primary uppercase text-[10px] tracking-wider">IBM Maximo Sync (Roadmap)</div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">REST integration pulling historical work order logs for active cognitive fingerprinting.</p>
+          </div>
+          <div className="border border-border/60 p-2 bg-muted/10">
+            <div className="font-semibold text-primary uppercase text-[10px] tracking-wider">Honeywell Forge (Roadmap)</div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">OPC-UA live feed correlation mapping real-time sensor anomalies to expert twins.</p>
+          </div>
         </div>
       </div>
-      <div className="border-t border-border/40 mt-6 pt-3 text-[10px] text-muted-foreground uppercase tracking-widest">
-        Active Integration status: <span className="text-primary font-mono font-bold animate-pulse">Connected</span>
+      <div className="border-t border-border/40 mt-6 pt-3 text-[10px] text-muted-foreground uppercase tracking-widest flex items-center justify-between">
+        <span>Integration Status:</span>
+        <span className="text-primary font-mono font-bold">Planned API v2</span>
       </div>
     </ForgePanel>
   );
