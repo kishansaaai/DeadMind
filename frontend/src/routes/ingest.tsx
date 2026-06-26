@@ -24,14 +24,57 @@ function Ingest() {
         title="Ingestion & Active Capture"
         description="Preserve a mind: upload logs, record voice notes from retiring engineers, and let the resolver collapse heterogeneous aliases."
       />
-      <div className="p-6 grid gap-4 lg:grid-cols-2">
+      <div className="p-6 grid gap-4 lg:grid-cols-3">
         <DocumentUpload />
         <VoiceCapture />
+        <CMMSSyncPanel />
       </div>
       <div className="px-6 pb-10">
         <CoreferencePanel />
       </div>
     </div>
+  );
+}
+
+function CMMSSyncPanel() {
+  return (
+    <ForgePanel className="p-5 flex flex-col justify-between">
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Link2 className="h-4 w-4 text-primary" />
+          <h2 className="font-display uppercase tracking-wider text-lg">CMMS Sync Bench</h2>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          Synchronize active coreference mappings, resolved failure codes, and expert recommendations directly with your plant's Enterprise Asset Management systems.
+        </p>
+        <div className="space-y-2 mt-4">
+          <button
+            type="button"
+            onClick={() => toast.success("Pushed 14 resolved coreference records to SAP PM")}
+            className="w-full bg-transparent border border-border text-foreground/80 hover:bg-accent/15 hover:text-foreground px-3 py-2.5 text-xs font-display uppercase tracking-wider cursor-pointer transition-colors"
+          >
+            Push to SAP PM
+          </button>
+          <button
+            type="button"
+            onClick={() => toast.success("Imported 52 historical maintenance sheets from IBM Maximo")}
+            className="w-full bg-transparent border border-border text-foreground/80 hover:bg-accent/15 hover:text-foreground px-3 py-2.5 text-xs font-display uppercase tracking-wider cursor-pointer transition-colors"
+          >
+            Pull from IBM Maximo
+          </button>
+          <button
+            type="button"
+            onClick={() => toast.success("Triggered compliance delta sync with Honeywell Forge")}
+            className="w-full bg-transparent border border-border text-foreground/80 hover:bg-accent/15 hover:text-foreground px-3 py-2.5 text-xs font-display uppercase tracking-wider cursor-pointer transition-colors"
+          >
+            Sync Honeywell Forge
+          </button>
+        </div>
+      </div>
+      <div className="border-t border-border/40 mt-6 pt-3 text-[10px] text-muted-foreground uppercase tracking-widest">
+        Active Integration status: <span className="text-primary font-mono font-bold animate-pulse">Connected</span>
+      </div>
+    </ForgePanel>
   );
 }
 

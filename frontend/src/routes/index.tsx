@@ -198,6 +198,9 @@ function PlantMap() {
                     <text y={5} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize={11} fill="oklch(0.92 0.012 80)" fontWeight={600}>
                       {n.tag}
                     </text>
+                    <text y={-r - 5} textAnchor="middle" fontFamily="Space Mono, monospace" fontSize={8} fontWeight={700} fill={fill}>
+                      {c === "red" ? "[CRIT]" : c === "yellow" ? "[WARN]" : "[SAFE]"}
+                    </text>
                     <text y={r + 18} textAnchor="middle" fontFamily="Rajdhani, sans-serif" fontSize={11} letterSpacing={1} fill="oklch(0.59 0.025 80)">
                       {n.name}
                     </text>
