@@ -385,6 +385,18 @@ def save_voice_note(payload: VoiceNotePayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/health")
+def get_health():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
+        conn.close()
+        return {"status": "healthy", "database": "connected", "engine": "FastAPI"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unhealthy: {str(e)}")
+
 # Mount static files
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
