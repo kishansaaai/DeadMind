@@ -4,9 +4,23 @@ import urllib.request
 from backend.retrieval import retrieve_expert_knowledge
 from backend.database import get_db_connection
 
+# Load .env file if present
+try:
+    from dotenv import load_dotenv
+    # Try loading from project root (one level above /backend/)
+    _env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    load_dotenv(_env_path)
+    print(f"[LLM] Loaded .env from: {_env_path}")
+except ImportError:
+    pass
+
 # Retrieve Groq key
 class APIConfig:
     key = os.environ.get("GROQ_API_KEY", "")
+    if key:
+        print(f"[LLM] GROQ_API_KEY loaded: {key[:8]}...")
+    else:
+        print("[LLM] WARNING: GROQ_API_KEY not set — will use mock fallback responses!")
 
 def get_groq_response(prompt: str, system_prompt: str) -> str:
     """
@@ -145,14 +159,20 @@ def generate_expert_answer(query: str, engineer_name: str = None) -> dict:
     )
     
     # 2. Query Groq or generate cognitive-biased mock fallback
-    if APIConfig.key:
+    # Re-read key each request in case env var was set after startup
+    live_key = os.environ.get("GROQ_API_KEY", "") or APIConfig.key
+    if live_key:
         try:
+            old_key = APIConfig.key
+            APIConfig.key = live_key
             answer = get_groq_response(prompt, system_prompt)
             confidence = 88
-        except Exception:
+        except Exception as e:
+            print(f"[LLM] Groq API error: {type(e).__name__}: {e}")
             answer = build_mocked_grounded_answer(query, resolved_engineer, sources, fingerprint)
             confidence = 85
     else:
+        print("[LLM] No API key — using mock fallback")
         answer = build_mocked_grounded_answer(query, resolved_engineer, sources, fingerprint)
         confidence = 85
         
