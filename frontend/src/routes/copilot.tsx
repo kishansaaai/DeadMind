@@ -5,6 +5,7 @@ import { api, type ChatResponse, type ConsensusResponse } from "@/lib/api";
 import { PageHeader, ForgePanel, ErrorBlock, LoadingBlock, Tag, EquipmentTag } from "@/components/forge";
 import { CognitiveRadar } from "@/components/cognitive-radar";
 import { Send, Users, Sparkles, X } from "lucide-react";
+import { toast } from "sonner";
 
 type Search = { engineer?: string };
 
@@ -121,8 +122,10 @@ function Copilot() {
   const chat = useMutation({
     mutationFn: ({ q, e }: { q: string; e: string }) => api.chat(q, e),
     onSuccess: (data) => setMsgs((m) => [...m, { role: "assistant", text: data.answer, meta: data }]),
-    onError: (err) =>
-      setMsgs((m) => [...m, { role: "assistant", text: `Error: ${err instanceof Error ? err.message : String(err)}` }]),
+    onError: (err) => {
+      setMsgs((m) => [...m, { role: "assistant", text: `Error: ${err instanceof Error ? err.message : String(err)}` }]);
+      toast.error(err instanceof Error ? err.message : "Consultation failed");
+    },
   });
 
   const cons = useMutation({
@@ -262,10 +265,33 @@ function Copilot() {
 
         {/* RIGHT: Chat */}
         <div className={`bg-background flex flex-col relative min-h-0 h-full overflow-hidden ${mobileTab === "chat" ? "flex" : "hidden lg:flex"}`}>
+          <div className="px-6 py-2 border-b border-border bg-sidebar/20 flex items-center justify-between">
+            <span className="section-label">Active Session: {engineer}</span>
+            {msgs.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMsgs([]);
+                  setConsensus(null);
+                  toast.success("Chat history cleared");
+                }}
+                className="text-[10px] uppercase font-mono tracking-wider border border-border px-2 py-0.5 hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
+              >
+                Clear Chat
+              </button>
+            )}
+          </div>
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
             {msgs.length === 0 && (
-              <ForgePanel className="p-6 text-sm text-muted-foreground">
-                Ask {engineer || "the expert"} how they'd handle a failure pattern, a calibration, or a procedure.
+              <ForgePanel className="p-6 text-sm text-muted-foreground flex flex-col items-start gap-3">
+                <p>Ask {engineer || "the expert"} how they'd handle a failure pattern, a calibration, or a procedure.</p>
+                <button
+                  type="button"
+                  onClick={() => send("How do you zero-span the positioner on B-101?")}
+                  className="bg-primary/20 border border-primary text-primary px-3 py-1.5 text-xs font-mono uppercase hover:bg-primary/30 transition-colors cursor-pointer"
+                >
+                  ⚡ Try a prompt: "How do you zero-span the positioner on B-101?"
+                </button>
               </ForgePanel>
             )}
             {msgs.map((m, i) =>
