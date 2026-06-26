@@ -135,6 +135,13 @@ function Copilot() {
   }, [msgs, chat.isPending]);
 
   if (engineersQ.isError) return <ErrorBlock error={engineersQ.error} />;
+  if (engineersQ.isLoading) {
+    return (
+      <div className="p-6">
+        <LoadingBlock label="Reconstructing expert cognitive twin interfaces..." />
+      </div>
+    );
+  }
 
   const engObj = (engineersQ.data ?? []).find((e) => e.name === engineer);
 
