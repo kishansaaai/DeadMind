@@ -60,6 +60,13 @@ function PlantMap() {
   const edges = useMemo(() => buildEdges(nodes), [nodes]);
 
   if (mapQ.isError) return <ErrorBlock error={mapQ.error} />;
+  if (mapQ.isLoading || engineersQ.isLoading) {
+    return (
+      <div className="p-6">
+        <LoadingBlock label="Synching Plant cognitive schematic & risk projections..." />
+      </div>
+    );
+  }
 
 
   const retiredCount = engs.filter((e) => e.retirement_year <= year).length;
