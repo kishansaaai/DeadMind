@@ -10,17 +10,7 @@ const Ctx = createContext<YearCtx | null>(null);
 export function YearProvider({ children }: { children: ReactNode }) {
   const [year, setYearState] = useState(2026);
   const setYear = (y: number) => {
-    setYearState((prev) => {
-      if (typeof window !== "undefined" && y < prev) {
-        // Year moved back → metrics improved → celebrate
-        window.dispatchEvent(
-          new CustomEvent("fx:confetti", {
-            detail: { y: window.innerHeight * 0.35 },
-          })
-        );
-      }
-      return y;
-    });
+    setYearState(y);
   };
   return <Ctx.Provider value={{ year, setYear }}>{children}</Ctx.Provider>;
 }
