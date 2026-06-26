@@ -104,6 +104,7 @@ function Copilot() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [consensus, setConsensus] = useState<ConsensusResponse | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [mobileTab, setMobileTab] = useState<"chat" | "radar">("chat");
 
   useEffect(() => {
     if (!engineer) {
@@ -153,16 +154,38 @@ function Copilot() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-7rem)]">
+    <div className="flex flex-col h-[calc(100vh-7rem)] max-md:h-[calc(100vh-9.5rem)]">
       <PageHeader
         eyebrow="Technician View"
         title="Expert Persona Copilot"
         description="Grounded Q&A with preserved engineer minds. Citations, uncertainty, and cross-bench consensus."
       />
 
+      {/* Mobile Tab Switcher */}
+      <div className="lg:hidden flex border-b border-border bg-card font-display text-[10px] uppercase tracking-wider">
+        <button
+          type="button"
+          onClick={() => setMobileTab("chat")}
+          className={`flex-1 py-3 text-center border-r border-border transition-colors cursor-pointer ${
+            mobileTab === "chat" ? "bg-accent/10 text-primary font-semibold" : "text-muted-foreground"
+          }`}
+        >
+          Chat Console
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab("radar")}
+          className={`flex-1 py-3 text-center transition-colors cursor-pointer ${
+            mobileTab === "radar" ? "bg-accent/10 text-primary font-semibold" : "text-muted-foreground"
+          }`}
+        >
+          Preserved Mind Info
+        </button>
+      </div>
+
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-px bg-border overflow-hidden">
         {/* LEFT: Radar + engineer selector */}
-        <div className="bg-background p-4 overflow-y-auto">
+        <div className={`bg-background p-4 overflow-y-auto ${mobileTab === "radar" ? "block" : "hidden lg:block"}`}>
           <div className="section-label mb-2">Engineer</div>
           <select
             value={engineer}
@@ -230,7 +253,7 @@ function Copilot() {
         </div>
 
         {/* RIGHT: Chat */}
-        <div className="bg-background flex flex-col relative min-h-0 h-full overflow-hidden">
+        <div className={`bg-background flex flex-col relative min-h-0 h-full overflow-hidden ${mobileTab === "chat" ? "flex" : "hidden lg:flex"}`}>
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
             {msgs.length === 0 && (
               <ForgePanel className="p-6 text-sm text-muted-foreground">
