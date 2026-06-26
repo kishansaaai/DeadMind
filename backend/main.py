@@ -338,13 +338,12 @@ def chat_expert(payload: ChatQuery, request: Request):
                 
         answer = generate_expert_answer(query, payload.engineer)
         
-        # Inject uncertainty breakdown metrics dynamically
-        import random
-        # Base uncertainty variables
+        # Inject uncertainty breakdown metrics dynamically and deterministically
+        query_hash = sum(ord(char) for char in query)
         sparsity = "LOW" if len(answer["citations"]) > 1 else "HIGH"
         staleness = "MEDIUM" if len(answer["citations"]) > 0 else "HIGH"
-        disagreement = "HIGH" if "conflict" in query.lower() or random.random() > 0.6 else "LOW"
-        causal = "MEDIUM" if random.random() > 0.4 else "LOW"
+        disagreement = "HIGH" if "conflict" in query.lower() or (query_hash % 10) > 6 else "LOW"
+        causal = "MEDIUM" if (query_hash % 10) > 4 else "LOW"
         risk_score = 15 if sparsity == "LOW" else 67
         
         answer["uncertainty"] = {
