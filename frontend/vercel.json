@@ -1,4 +1,9 @@
 {
+  "build": {
+    "env": {
+      "NITRO_PRESET": "vercel"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
