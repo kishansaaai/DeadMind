@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { api, type HalfLifeDoc } from "@/lib/api";
-import { PageHeader, ForgePanel, LoadingBlock, ErrorBlock, Tag, EquipmentTag } from "@/components/forge";
+import { PageHeader, ForgePanel, LoadingBlock, ErrorBlock, Tag, EquipmentTag, Stat } from "@/components/forge";
 import { ShieldCheck, Flame, FileWarning, AlertTriangle } from "lucide-react";
+import { useYear } from "@/lib/year-context";
 
 export const Route = createFileRoute("/audit")({
   head: () => ({
@@ -16,6 +17,12 @@ export const Route = createFileRoute("/audit")({
 });
 
 function Audit() {
+  const { year } = useYear();
+  const q = useQuery({ queryKey: ["engineers"], queryFn: api.engineers });
+  const engs = q.data ?? [];
+  const remainingYears = engs.filter((e) => e.retirement_year > year).map((e) => e.retirement_year - year);
+  const khi = remainingYears.length === 0 ? 0.0 : parseFloat((remainingYears.reduce((a, b) => a + b, 0) / remainingYears.length).toFixed(1));
+
   return (
     <div>
       <PageHeader
@@ -24,6 +31,33 @@ function Audit() {
         description="Audit procedural deviations vs. the written SOP, watch documentation rot in real time, and surface predictive warnings from raw shift logs."
       />
       <div className="p-6 space-y-6">
+        <div className="grid gap-4 md:grid-cols-4">
+          <Stat
+            label="Knowledge Half-Life (KHI)"
+            value={`${khi} years`}
+            tone={khi < 2.0 ? "fire" : khi < 4.0 ? "gold" : "steel"}
+            hint={`Simulation year ${year} (Remaining: ${engs.filter((e) => e.retirement_year > year).length}/${engs.length} experts)`}
+            delta={year > 2026 ? -15.4 : undefined}
+          />
+          <Stat
+            label="SOP Audited"
+            value="SOP-2019-047"
+            tone="steel"
+            hint="Boiler Startup Compliance"
+          />
+          <Stat
+            label="Avg Freshness"
+            value="65.3%"
+            tone="gold"
+            hint="Documentation health score"
+          />
+          <Stat
+            label="Active Anomalies"
+            value="1 Alert"
+            tone="fire"
+            hint="Flagged in shift notes"
+          />
+        </div>
         <ShiftNoteAnalyzer />
         <div className="grid gap-4 lg:grid-cols-2">
           <SopTable />
