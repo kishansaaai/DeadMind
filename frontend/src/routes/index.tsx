@@ -163,7 +163,7 @@ function PlantMap() {
           {mapQ.isLoading ? (
             <LoadingBlock />
           ) : (
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" aria-label="Equipment Schematic Map" role="img">
               <defs>
                 <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
                   <path d="M 40 0 L 0 0 0 40" fill="none" stroke="oklch(0.22 0.012 275 / 0.5)" strokeWidth="0.5" />
@@ -189,8 +189,17 @@ function PlantMap() {
                   <g
                     key={n.tag}
                     transform={`translate(${n.x},${n.y})`}
-                    className={`cursor-pointer ${c === "red" ? "node-danger" : ""}`}
+                    className={`cursor-pointer focus:outline-none ${c === "red" ? "node-danger" : ""}`}
                     onClick={() => selectNode(n.tag === selectedTag ? undefined : n.tag)}
+                    aria-label={`Equipment node ${n.tag}: ${n.name}, risk status: ${c === "red" ? "Critical" : c === "yellow" ? "Warning" : "Safe"}`}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        selectNode(n.tag === selectedTag ? undefined : n.tag);
+                      }
+                    }}
                   >
                     {isSel && <circle r={r + 14} fill="none" stroke="oklch(0.92 0.012 80)" strokeWidth={1.5} strokeDasharray="3 3" />}
                     <circle r={r + 8} fill={fill} fillOpacity={0.15} />
