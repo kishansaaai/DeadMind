@@ -112,8 +112,16 @@ function PlantMap() {
       <PageHeader
         eyebrow="CFO View"
         title="Plant Knowledge & Vulnerability Map"
-        description="Live financial exposure from knowledge gaps across the plant. Drag the simulation year above to retire engineers and watch coverage degrade."
       />
+
+      <div className="mx-6 mt-4 p-3 bg-primary/10 border border-primary/20 flex flex-wrap justify-between items-center text-[10px] font-mono uppercase tracking-wider text-primary">
+        <div className="font-bold flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" /> Platform Anchor Stats:</div>
+        <div className="flex flex-wrap gap-x-6 gap-y-1">
+          <span>⚠️ 25% engineers retiring this decade</span>
+          <span>📉 35% time lost searching docs (McKinsey)</span>
+          <span>⚡ 18-22% downtime from knowledge gaps (BIS Research)</span>
+        </div>
+      </div>
 
       <div className="p-6 grid gap-4 md:grid-cols-5">
         <Stat
