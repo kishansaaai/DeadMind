@@ -100,9 +100,11 @@ function DocumentUpload() {
 
   const m = useMutation({
     mutationFn: () => {
+      const cleanTitle = title.trim().replace(/<\/?[^>]+(>|$)/g, "");
+      const cleanContent = content.trim().replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, "").replace(/<\/?[^>]+(>|$)/g, "");
       const fd = new FormData();
-      fd.append("title", title);
-      fd.append("content", content);
+      fd.append("title", cleanTitle);
+      fd.append("content", cleanContent);
       fd.append("doc_type", docType);
       if (engineer) fd.append("engineer", engineer);
       return api.upload(fd);
