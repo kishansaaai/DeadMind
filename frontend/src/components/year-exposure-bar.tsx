@@ -31,6 +31,7 @@ export function YearExposureBar() {
           value={[year]}
           onValueChange={(v) => setYear(v[0] ?? 2026)}
           className="flex-1"
+          aria-label="Simulation Year Slider"
         />
         <span
           key={year}
