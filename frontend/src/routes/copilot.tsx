@@ -197,6 +197,7 @@ function Copilot() {
               navigate({ search: { engineer: v } });
             }}
             className="w-full bg-popover border border-border text-foreground font-display uppercase tracking-wider text-sm px-3 py-2 rounded-none mb-4"
+            aria-label="Select engineer persona to consult"
           >
             {(engineersQ.data ?? []).map((e) => (
               <option key={e.name} value={e.name}>{e.name}</option>
@@ -360,6 +361,7 @@ function Copilot() {
                   key={s}
                   onClick={() => send(s)}
                   className="text-[0.7rem] uppercase tracking-wider border border-border px-2 py-1 hover:border-primary hover:text-primary text-muted-foreground transition-colors"
+                  aria-label={`Ask suggestion: ${s}`}
                 >
                   {s}
                 </button>
@@ -374,12 +376,14 @@ function Copilot() {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={`Ask ${engineer || "the expert"}…`}
                 className="flex-1 bg-popover border border-border text-foreground px-3 py-2 rounded-none focus:outline-none focus:border-primary"
+                aria-label="Consultation query input"
               />
               <button
                 type="button"
                 onClick={arbitrate}
                 disabled={cons.isPending || !engineer}
                 className="bg-transparent border border-primary/60 text-primary px-3 py-2 font-display uppercase tracking-wider text-xs hover:bg-primary/10 disabled:opacity-40 flex items-center gap-1.5"
+                aria-label="Request consensus view on query"
               >
                 <Users className="h-4 w-4" /> {cons.isPending ? "Weighing…" : "Consensus"}
               </button>
@@ -387,6 +391,7 @@ function Copilot() {
                 type="submit"
                 disabled={chat.isPending || !engineer || !input.trim()}
                 className="bg-primary text-primary-foreground px-4 py-2 font-display uppercase tracking-wider text-sm hover:bg-primary/90 disabled:opacity-40 flex items-center gap-1.5"
+                aria-label="Submit query to expert"
               >
                 <Send className="h-4 w-4" /> Consult
               </button>
