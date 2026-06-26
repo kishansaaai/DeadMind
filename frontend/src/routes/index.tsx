@@ -123,6 +123,11 @@ function PlantMap() {
         </div>
       </div>
 
+      <div className="mx-6 mt-3 p-3 bg-accent/10 border border-accent/20 flex flex-wrap justify-between items-center text-[10px] font-mono uppercase tracking-wider text-accent">
+        <div className="font-bold flex items-center gap-1.5">💡 Demo Walkthrough:</div>
+        <p className="flex-1 ml-4 text-[11px]">Adjust the <strong className="text-primary font-bold">"Simulation Year"</strong> slider in the header bar above to trigger engineer retirements. Watch coverage degrade from Green to Red and financial exposure spike in real-time.</p>
+      </div>
+
       <div className="p-6 grid gap-4 md:grid-cols-5">
         <Stat
           label="Plant Risk"
