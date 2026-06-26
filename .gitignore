@@ -21,6 +21,7 @@ frontend/.nitro/
 frontend/.wrangler/
 
 # Databases & local state
+*.db
 *.db-journal
 *.log
 .DS_Store

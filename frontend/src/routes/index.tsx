@@ -207,7 +207,7 @@ function PlantMap() {
 
       <div className="px-6 pb-10 grid gap-4 lg:grid-cols-2">
         <RetirementTimeline year={year} />
-        <DependencyMini data={networkQ.data ?? []} loading={networkQ.isLoading} />
+        <DependencyMini data={networkQ.data ?? []} loading={networkQ.isLoading} year={year} engineers={engs} />
       </div>
     </div>
   );
@@ -346,9 +346,15 @@ function RetirementTimeline({ year }: { year: number }) {
       <div className="grid grid-cols-11 gap-1">
         {Array.from({ length: 11 }, (_, i) => 2026 + i).map((y) => {
           const ret = engs.filter((e) => e.retirement_year === y);
+          const isCurrent = y === year;
           const past = y <= year;
+          const borderClass = isCurrent
+            ? "border-primary bg-primary/10 shadow-[0_0_8px_oklch(0.85_0.16_80)]"
+            : past
+            ? "border-destructive/60 bg-destructive/10"
+            : "border-border";
           return (
-            <div key={y} className={`p-1.5 border ${past ? "border-destructive/60 bg-destructive/10" : "border-border"}`}>
+            <div key={y} className={`p-1.5 border ${borderClass}`}>
               <div className="font-counter text-[0.6rem] text-center text-muted-foreground">{y}</div>
               <div className={`font-counter text-xl text-center tabular-nums ${ret.length > 0 ? "text-destructive" : "text-muted-foreground/40"}`}>
                 {ret.length}
@@ -361,7 +367,14 @@ function RetirementTimeline({ year }: { year: number }) {
   );
 }
 
-function DependencyMini({ data, loading }: { data: NetworkRow[]; loading: boolean }) {
+function DependencyMini({ data, loading, year, engineers }: { data: NetworkRow[]; loading: boolean; year: number; engineers: any[] }) {
+  const filteredData = useMemo(() => {
+    return data.filter((row) => {
+      const eng = engineers.find((e) => e.name === row.engineer);
+      return eng ? eng.retirement_year > year : true;
+    });
+  }, [data, year, engineers]);
+
   return (
     <ForgePanel className="p-5">
       <div className="flex items-center justify-between mb-3">
@@ -372,13 +385,13 @@ function DependencyMini({ data, loading }: { data: NetworkRow[]; loading: boolea
       </div>
       {loading ? (
         <LoadingBlock />
-      ) : data.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No network data.</p>
+      ) : filteredData.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No active network data.</p>
       ) : (
         <>
-          <ForceGraph data={data} />
+          <ForceGraph data={filteredData} />
           <div className="mt-3 grid grid-cols-2 gap-2 text-[0.65rem]">
-            {data.slice(0, 4).map((r) => (
+            {filteredData.slice(0, 4).map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-2">
                 <span className="truncate">{r.engineer}</span>
                 <span className="font-counter tabular-nums text-primary">

@@ -9,7 +9,7 @@ let liveDown = MOCK_ONLY;
 
 async function tryFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 15000);
+  const timer = setTimeout(() => ctrl.abort(), 2000);
   try {
     const res = await fetch(`${BASE}${path}`, {
       ...init,
@@ -37,9 +37,9 @@ async function req<T>(path: string, init: RequestInit | undefined, fallback: () 
   try {
     return await tryFetch<T>(path, init);
   } catch (err) {
-    // Fallback to mock data for this request only, without locking the session permanently.
+    liveDown = true;
     if (typeof console !== "undefined") {
-      console.warn("[DeadMind] live API unreachable — serving mock data for this request.", err);
+      console.warn("[DeadMind] live API unreachable — switching permanently to mock data for this session.", err);
     }
     return await fallback();
   }

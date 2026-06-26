@@ -32,7 +32,7 @@ export function useYear() {
 }
 
 export function colorForNode(activeOwnerCount: number): "green" | "yellow" | "red" {
-  if (activeOwnerCount >= 3) return "green";
+  if (activeOwnerCount >= 2) return "green";
   if (activeOwnerCount >= 1) return "yellow";
   return "red";
 }

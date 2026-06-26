@@ -34,18 +34,26 @@ def seed_data():
     cursor.execute("DELETE FROM org_network")
     cursor.execute("DELETE FROM sop_compliance")
     
-    # 2. Insert Engineers with Cognitive Fingerprints
+    # 2. Insert Engineers with Cognitive Fingerprints (out of 100)
     engineers = [
-        ("Rajan Sharma", "Senior Boiler & Turbine Lead", "Retired", "2026-03-15", 2026, "avatar-rajan.png", 92, 
+        ("Rajan Sharma", "Senior Boiler & Turbine Lead", "Retired", "2026-03-15", 2026, "RS", 92, 
          "Boiler Operations, Steam Turbines, High Pressure Systems", 85, 20, 90, 30, 45, 80),
-        ("Amit Patel", "Electrical Maintenance Lead", "Active", "2031-08-10", 2031, "avatar-amit.png", 45, 
+        ("Amit Patel", "Electrical Maintenance Lead", "Active", "2031-08-10", 2031, "AP", 45, 
          "Switchgears, Transformers, Power Distribution", 40, 85, 25, 92, 50, 40),
-        ("Vikram Sen", "Instrumentation & Control Expert", "Active", "2033-05-12", 2033, "avatar-vikram.png", 30, 
+        ("Vikram Sen", "Instrumentation & Control Expert", "Active", "2033-05-12", 2033, "VS", 30, 
          "Control Valves, Loop Calibration, PLC Systems", 75, 55, 35, 45, 95, 70),
-        ("T. Nair", "Rotating Equipment Specialist", "Active", "2028-04-01", 2028, "avatar-nair.png", 81, 
+        ("T. Nair", "Rotating Equipment Specialist", "Active", "2028-04-01", 2028, "TN", 81, 
          "Pumps, Seals, Bearings, Vibration Trend Analysis", 78, 82, 95, 32, 50, 60),
-        ("M. Pillai", "Process Veteran", "Active", "2026-09-15", 2026, "avatar-pillai.png", 96, 
-         "Distillation, Heat Exchange, Startup Procedures", 70, 95, 55, 35, 60, 99)
+        ("M. Pillai", "Process Veteran", "Active", "2026-09-15", 2026, "MP", 96, 
+         "Distillation, Heat Exchange, Startup Procedures", 70, 95, 55, 35, 60, 99),
+        ("R. Nayar", "Senior Instrument Systems Engineer", "Active", "2027-06-30", 2027, "RN", 88, 
+         "Positioner Calibration, Signal Drift, Field Devices", 92, 45, 70, 40, 98, 75),
+        ("S. Kulkarni", "High Pressure Safety Auditor", "Active", "2030-10-15", 2030, "SK", 55, 
+         "Safety Valves, Relief Systems, Hazard Analysis", 90, 60, 60, 50, 80, 85),
+        ("H. Mehta", "Auxiliary Systems Technician", "Active", "2029-12-31", 2029, "HM", 72, 
+         "Compressors, Heat Exchangers, Auxiliary Steam", 65, 70, 85, 60, 55, 60),
+        ("A. Joshi", "Automation & PLC Engineer", "Active", "2035-05-20", 2035, "AJ", 25, 
+         "SCADA systems, Logic Controller, Network architecture", 95, 80, 40, 85, 90, 80)
     ]
     
     cursor.executemany("""
@@ -58,11 +66,20 @@ def seed_data():
     
     # 3. Insert Equipment Nodes with Downtime Costs
     nodes = [
-        ("B-101", "Primary Steam Boiler", "Utility Section", 250.0, 150.0, "High", 12000000),
-        ("P-302", "Boiler Feedwater Pump", "Feedwater Station", 450.0, 200.0, "High", 8000000),
+        ("TURBINE-04", "Auxiliary Steam Turbine", "Utility Section", 200.0, 120.0, "High", 15000000),
+        ("BOILER-2", "High-Pressure Boiler 2", "Utility Section", 500.0, 110.0, "High", 18000000),
+        ("P-302", "Boiler Feedwater Pump A", "Feedwater Station", 320.0, 420.0, "High", 8000000),
+        ("B-101", "Primary Steam Boiler", "Utility Section", 460.0, 140.0, "High", 12000000),
         ("V-205", "Low-Ambient Control Valve", "Feedwater Station", 650.0, 250.0, "Medium", 5000000),
-        ("C-104", "Main Air Compressor", "Instrument Air Section", 350.0, 380.0, "High", 10000000),
-        ("S-501", "Main Electrical Switchgear", "Power House", 750.0, 380.0, "High", 12000000)
+        ("C-104", "Main Air Compressor", "Instrument Air Section", 180.0, 200.0, "High", 10000000),
+        ("S-501", "Main Electrical Switchgear", "Power House", 750.0, 380.0, "High", 12000000),
+        ("E-310", "Feed/Effluent HX", "Reaction Section", 560.0, 360.0, "Medium", 1800000),
+        ("T-401", "Main Fractionator Column", "Distillation", 820.0, 460.0, "High", 20000000),
+        ("D-220", "Reactor Knockout Drum", "Reaction Section", 660.0, 80.0, "Medium", 7800000),
+        ("P-304", "Emergency Backup Pump", "Feedwater Station", 380.0, 480.0, "Medium", 6000000),
+        ("H-102", "Primary Flue Gas Heater", "Utility Section", 580.0, 180.0, "Low", 4000000),
+        ("V-206", "High-Pressure Safety Vessel", "Reaction Section", 700.0, 150.0, "High", 14000000),
+        ("TURBINE-02", "Main Generator Turbine", "Power House", 850.0, 280.0, "High", 25000000)
     ]
     
     cursor.executemany("""
@@ -93,7 +110,7 @@ def seed_data():
         equipment_tag, title, expert_a, expert_b, rec_a, rec_b, outcome_a, outcome_b, ai_recommendation, confidence
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, conflicts)
-
+    
     # 5. Insert Temporal Causal Links
     causal_links = [
         ("B-101", "B-101 Boiler Bearing Wear (Rajan, 2016)", "P-302 Feedwater Cavitation (Vikram, 2018)", 0, 
@@ -108,7 +125,7 @@ def seed_data():
     INSERT INTO causal_links (equipment_tag, parent_event, child_event, is_prediction, description)
     VALUES (?, ?, ?, ?, ?)
     """, causal_links)
-
+    
     # 6. Insert Semantic Drift coordinates
     semantic_drift = [
         ("C-104", 2016, "Minor vibration noted on startup", 12.0, 15.0, 0.1),
@@ -127,7 +144,7 @@ def seed_data():
     INSERT INTO semantic_drift (equipment_tag, year, phrase, vector_x, vector_y, severity_index)
     VALUES (?, ?, ?, ?, ?, ?)
     """, semantic_drift)
-
+    
     # 7. Insert Counterfactual failures
     counterfactuals = [
         ("P-302", "Rajan's 2018 valve calibration on P-302", "Calibrated zero span feedback arm instead of standard loop reset", 2.3, 
@@ -140,7 +157,7 @@ def seed_data():
     INSERT INTO counterfactuals (equipment_tag, title, intervention, cost_avoided_crore, consequences)
     VALUES (?, ?, ?, ?, ?)
     """, counterfactuals)
-
+    
     # 8. Insert Cross-Document Coreferences
     coreferences = [
         ("B-101 Primary Steam Boiler", "B-101", "Equipment", 98),
@@ -149,26 +166,34 @@ def seed_data():
         ("Rajan Sharma", "R. Sharma", "Person", 95),
         ("Rajan Sharma", "Rajan S.", "Person", 99),
         ("Feedwater Cavitation", "pump surge", "Phenomenon", 82),
-        ("Feedwater Cavitation", "flow instability", "Phenomenon", 85)
+        ("Feedwater Cavitation", "flow instability", "Phenomenon", 85),
+        ("R. Nayar", "Nayar", "Person", 99),
+        ("R. Nayar", "R. Nayar", "Person", 100),
+        ("Senior Instrument Engineer", "R. Nayar", "Person", 90),
+        ("BOILER-2", "Boiler 2", "Equipment", 97),
+        ("TURBINE-04", "Aux Turbine", "Equipment", 94)
     ]
     
     cursor.executemany("""
     INSERT INTO coreference_map (standard_name, alias_name, entity_type, confidence)
     VALUES (?, ?, ?, ?)
     """, coreferences)
-
+    
     # 9. Insert Org Network dependency scores
     network = [
         ("Vikram Sen", 0.89, "Rajan Sharma, Amit Patel", 3, 0.33),
         ("Rajan Sharma", 0.72, "Vikram Sen", 2, 0.24),
-        ("Amit Patel", 0.45, "Vikram Sen", 1, 0.12)
+        ("Amit Patel", 0.45, "Vikram Sen", 1, 0.12),
+        ("T. Nair", 0.65, "Rajan Sharma", 2, 0.20),
+        ("M. Pillai", 0.82, "R. Nayar, Rajan Sharma", 4, 0.38),
+        ("R. Nayar", 0.78, "Vikram Sen", 3, 0.30)
     ]
     
     cursor.executemany("""
     INSERT INTO org_network (engineer, centrality, dependencies, domains_affected, resilience_drop)
     VALUES (?, ?, ?, ?, ?)
     """, network)
-
+    
     # 10. Insert SOP Compliance audits
     compliance = [
         ("SOP-2019-047 (Boiler Startup)", 1, "Verify feedwater pump suction valves are open", 100, "None"),
@@ -225,7 +250,7 @@ def seed_data():
         doc_type="Inspection Report",
         forced_author="Rajan Sharma"
     )
-
+    
     doc3 = ingest_document(
         title="Switchgear Busbar Overheating - S-501",
         content="""
@@ -243,7 +268,7 @@ def seed_data():
         doc_type="Inspection Report",
         forced_author="Amit Patel"
     )
-
+    
     doc4 = ingest_document(
         title="Feedwater Valve Positioner Calibration - V-205",
         content="""
@@ -313,6 +338,41 @@ def seed_data():
         forced_author="M. Pillai"
     )
 
+    doc8 = ingest_document(
+        title="Zero-Span Calibration Standard - TURBINE-04",
+        content="""
+        EQUIPMENT: TURBINE-04 Auxiliary Steam Turbine
+        DATE: Nov 2023
+        AUTHOR: R. Nayar (Senior Instrument Systems Engineer)
+        
+        OBSERVATION:
+        Turbine speed governor signal showing minor feedback lag on cold startup.
+        
+        DIAGNOSIS:
+        Adjusted governor feedback loop. Re-zeroed the signal offset at 4mA and 20mA span limit. 
+        Feedback now perfectly linear.
+        """,
+        doc_type="Maintenance Log",
+        forced_author="R. Nayar"
+    )
+
+    doc9 = ingest_document(
+        title="Boiler-2 Fuel Gas Solenoid Overhaul",
+        content="""
+        EQUIPMENT: BOILER-2 High-Pressure Boiler 2
+        DATE: Dec 2024
+        AUTHOR: R. Nayar (Senior Instrument Systems Engineer)
+        
+        OBSERVATION:
+        Intermittent solenoid trips during peak loads.
+        
+        DIAGNOSIS:
+        Found solenoid coil temperature exceeding 85°C. Cleaned dust coating and re-routed instrumentation air duct to supply cooling air. Trips resolved.
+        """,
+        doc_type="Inspection Report",
+        forced_author="R. Nayar"
+    )
+
     # Update freshness metrics in DB
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -323,6 +383,8 @@ def seed_data():
     cursor.execute("UPDATE documents SET age_years = 7, reference_count = 5, contradiction_count = 0, hardware_generation = 'Gen 2' WHERE id = ?", (doc5["id"],))
     cursor.execute("UPDATE documents SET age_years = 5, reference_count = 8, contradiction_count = 1, hardware_generation = 'Gen 2' WHERE id = ?", (doc6["id"],))
     cursor.execute("UPDATE documents SET age_years = 4, reference_count = 12, contradiction_count = 3, hardware_generation = 'Gen 1' WHERE id = ?", (doc7["id"],))
+    cursor.execute("UPDATE documents SET age_years = 2, reference_count = 14, contradiction_count = 0, hardware_generation = 'Gen 2' WHERE id = ?", (doc8["id"],))
+    cursor.execute("UPDATE documents SET age_years = 1, reference_count = 9, contradiction_count = 1, hardware_generation = 'Gen 2' WHERE id = ?", (doc9["id"],))
     conn.commit()
     conn.close()
 
