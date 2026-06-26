@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { api, type VulnNode, type CausalLink, type Counterfactual, type NetworkRow } from "@/lib/api";
+import { api, type VulnNode, type CausalLink, type Counterfactual, type NetworkRow, type Engineer } from "@/lib/api";
 import { useYear, colorForNode } from "@/lib/year-context";
 import { PageHeader, ForgePanel, Stat, EquipmentTag, ErrorBlock, LoadingBlock, Tag } from "@/components/forge";
 import { ForceGraph } from "@/components/fx/force-graph";
@@ -405,7 +405,7 @@ function RetirementTimeline({ year }: { year: number }) {
   );
 }
 
-function DependencyMini({ data, loading, year, engineers }: { data: NetworkRow[]; loading: boolean; year: number; engineers: any[] }) {
+function DependencyMini({ data, loading, year, engineers }: { data: NetworkRow[]; loading: boolean; year: number; engineers: Engineer[] }) {
   const filteredData = useMemo(() => {
     return data.filter((row) => {
       const eng = engineers.find((e) => e.name === row.engineer);
