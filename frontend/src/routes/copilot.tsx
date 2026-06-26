@@ -108,8 +108,12 @@ function Copilot() {
   useEffect(() => {
     if (!engineer) {
       const fromUrl = search.engineer;
-      if (fromUrl) setEngineer(fromUrl);
-      else if (engineersQ.data && engineersQ.data.length > 0) setEngineer(engineersQ.data[0].name);
+      if (fromUrl) {
+        setEngineer(fromUrl);
+      } else if (engineersQ.data && engineersQ.data.length > 0) {
+        const defaultEng = engineersQ.data.find(e => e.name.includes("Nayar")) || engineersQ.data[0];
+        setEngineer(defaultEng.name);
+      }
     }
   }, [search.engineer, engineersQ.data, engineer]);
 
