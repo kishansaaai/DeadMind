@@ -321,11 +321,11 @@ function CoreferencePanel() {
                   <td className="py-1.5 px-2"><Tag tone="muted">{r.entity_type}</Tag></td>
                   <td className="py-1.5 px-2 text-right">
                     <div className="inline-flex items-center gap-2">
-                      <div className="w-20 h-1.5 bg-muted/40 border border-border">
-                        <div className="h-full bg-primary" style={{ width: `${r.confidence * 100}%` }} />
+                      <div className="w-20 h-1.5 bg-muted/40 border border-border overflow-hidden">
+                        <div className="h-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, r.confidence * 100))}%` }} />
                       </div>
-                      <span className="font-counter tabular-nums text-primary w-8 text-right">
-                        {(r.confidence * 100).toFixed(0)}
+                      <span className="font-counter tabular-nums text-primary w-10 text-right">
+                        {Math.min(100, Math.max(0, r.confidence * 100)).toFixed(0)}%
                       </span>
                     </div>
                   </td>

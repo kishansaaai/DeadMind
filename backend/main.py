@@ -257,7 +257,13 @@ def get_coreference():
     cursor.execute("SELECT * FROM coreference_map")
     rows = cursor.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    res = []
+    for row in rows:
+        d = dict(row)
+        if d.get("confidence") is not None:
+            d["confidence"] = d["confidence"] / 100.0
+        res.append(d)
+    return res
 
 # Research Endpoint 3: Organisational Knowledge Network
 @app.get("/api/network")
