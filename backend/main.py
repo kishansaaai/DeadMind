@@ -1,9 +1,28 @@
 import os
 import base64
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
+from typing import Optional, List
+import time
+from collections import defaultdict
+
+# Simple In-Memory Rate Limiter (10 requests per minute for AI endpoints)
+RATE_LIMIT_STRIKES = defaultdict(list)
+AI_LIMIT = 10
+AI_WINDOW = 60
+
+def check_rate_limit(request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    RATE_LIMIT_STRIKES[client_ip] = [t for t in RATE_LIMIT_STRIKES[client_ip] if now - t < AI_WINDOW]
+    if len(RATE_LIMIT_STRIKES[client_ip]) >= AI_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail="Too Many Requests. AI endpoints are rate-limited to 10 requests per minute."
+        )
+    RATE_LIMIT_STRIKES[client_ip].append(now)
 from typing import Optional, List
 
 from backend.database import init_db, get_db_connection
@@ -174,7 +193,8 @@ def get_half_life():
 
 # Endpoint 4: Multi-Expert Consensus Synthesis
 @app.post("/api/consensus")
-def post_consensus(payload: ChatQuery):
+def post_consensus(payload: ChatQuery, request: Request):
+    check_rate_limit(request)
     experts = ["Rajan Sharma", "Amit Patel", "Vikram Sen"]
     results = {}
     
@@ -299,7 +319,8 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/chat")
-def chat_expert(payload: ChatQuery):
+def chat_expert(payload: ChatQuery, request: Request):
+    check_rate_limit(request)
     try:
         # Perform entity normalization mapping standard names first!
         query = payload.query
