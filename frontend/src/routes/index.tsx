@@ -381,7 +381,7 @@ function RetirementTimeline({ year }: { year: number }) {
   return (
     <ForgePanel className="p-5">
       <h2 className="font-display uppercase tracking-wider text-lg mb-3">Retirement Timeline</h2>
-      <div className="grid grid-cols-11 gap-1">
+      <div className="grid grid-cols-4 sm:grid-cols-11 gap-1">
         {Array.from({ length: 11 }, (_, i) => 2026 + i).map((y) => {
           const ret = engs.filter((e) => e.retirement_year === y);
           const isCurrent = y === year;
