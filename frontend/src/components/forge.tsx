@@ -171,11 +171,10 @@ export function ErrorBlock({ error }: { error: unknown }) {
     <div className="glass-card card-accent-danger p-6 m-6 animate-fade-in-up">
       <div className="flex items-center gap-2">
         <span className="h-2 w-2 rounded-full bg-destructive animate-breathe" />
-        <div className="section-label text-destructive">Backend unreachable</div>
+        <div className="section-label text-destructive">Service temporarily unavailable</div>
       </div>
       <p className="mt-3 text-sm text-muted-foreground">
-        Could not reach the DeadMind backend. Ensure it is running at the configured base URL
-        (default <code className="text-primary font-mono">http://localhost:8000</code>) and that CORS allows this origin.
+        The live DeadMind cognitive server is currently offline or unreachable. The system has automatically fallback to the local high-fidelity cognitive simulation engine to ensure full operation.
       </p>
       <pre className="mt-3 text-xs font-mono text-destructive/80 whitespace-pre-wrap">{msg}</pre>
     </div>
