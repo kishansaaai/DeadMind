@@ -178,60 +178,64 @@ function PlantMap() {
           {mapQ.isLoading ? (
             <LoadingBlock />
           ) : (
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" aria-label="Equipment Schematic Map" role="img">
-              <defs>
-                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="oklch(0.22 0.012 275 / 0.5)" strokeWidth="0.5" />
-                </pattern>
-              </defs>
-              <rect width={W} height={H} fill="url(#grid)" />
-              {edges.map((e, i) => (
-                <line
-                  key={i}
-                  x1={e.a.x} y1={e.a.y} x2={e.b.x} y2={e.b.y}
-                  stroke="oklch(0.80 0.14 85 / 0.45)"
-                  strokeWidth={1.5}
-                  strokeDasharray="6 4"
-                />
-              ))}
-              {nodes.map((n) => {
-                const activeCount = (n.active_engineers ?? []).filter((e) => e.retirement_year >= year).length;
-                const c = colorForNode(activeCount);
-                const fill = colorFill(c);
-                const r = n.criticality === "High" ? 22 : 18;
-                const isSel = selectedTag === n.tag;
-                return (
-                  <g
-                    key={n.tag}
-                    transform={`translate(${n.x},${n.y})`}
-                    className={`cursor-pointer focus:outline-none ${c === "red" ? "node-danger" : ""}`}
-                    onClick={() => selectNode(n.tag === selectedTag ? undefined : n.tag)}
-                    aria-label={`Equipment node ${n.tag}: ${n.name}, risk status: ${c === "red" ? "Critical" : c === "yellow" ? "Warning" : "Safe"}`}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        selectNode(n.tag === selectedTag ? undefined : n.tag);
-                      }
-                    }}
-                  >
-                    {isSel && <circle r={r + 14} fill="none" stroke="oklch(0.92 0.012 80)" strokeWidth={1.5} strokeDasharray="3 3" />}
-                    <circle r={r + 8} fill={fill} fillOpacity={0.15} />
-                    <circle r={r} fill={fill} fillOpacity={0.4} stroke={fill} strokeWidth={2} />
-                    <text y={5} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize={11} fill="oklch(0.92 0.012 80)" fontWeight={600}>
-                      {n.tag}
-                    </text>
-                    <text y={-r - 5} textAnchor="middle" fontFamily="Space Mono, monospace" fontSize={8} fontWeight={700} fill={fill}>
-                      {c === "red" ? "[CRIT]" : c === "yellow" ? "[WARN]" : "[SAFE]"}
-                    </text>
-                    <text y={r + 18} textAnchor="middle" fontFamily="Rajdhani, sans-serif" fontSize={11} letterSpacing={1} fill="oklch(0.59 0.025 80)">
-                      {n.name}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
+            <div className="w-full overflow-x-auto pb-2">
+              <div className="min-w-[800px]">
+                <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" aria-label="Equipment Schematic Map" role="img">
+                  <defs>
+                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="oklch(0.22 0.012 275 / 0.5)" strokeWidth="0.5" />
+                    </pattern>
+                  </defs>
+                  <rect width={W} height={H} fill="url(#grid)" />
+                  {edges.map((e, i) => (
+                    <line
+                      key={i}
+                      x1={e.a.x} y1={e.a.y} x2={e.b.x} y2={e.b.y}
+                      stroke="oklch(0.80 0.14 85 / 0.45)"
+                      strokeWidth={1.5}
+                      strokeDasharray="6 4"
+                    />
+                  ))}
+                  {nodes.map((n) => {
+                    const activeCount = (n.active_engineers ?? []).filter((e) => e.retirement_year >= year).length;
+                    const c = colorForNode(activeCount);
+                    const fill = colorFill(c);
+                    const r = n.criticality === "High" ? 22 : 18;
+                    const isSel = selectedTag === n.tag;
+                    return (
+                      <g
+                        key={n.tag}
+                        transform={`translate(${n.x},${n.y})`}
+                        className={`cursor-pointer focus:outline-none ${c === "red" ? "node-danger" : ""}`}
+                        onClick={() => selectNode(n.tag === selectedTag ? undefined : n.tag)}
+                        aria-label={`Equipment node ${n.tag}: ${n.name}, risk status: ${c === "red" ? "Critical" : c === "yellow" ? "Warning" : "Safe"}`}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            selectNode(n.tag === selectedTag ? undefined : n.tag);
+                          }
+                        }}
+                      >
+                        {isSel && <circle r={r + 14} fill="none" stroke="oklch(0.92 0.012 80)" strokeWidth={1.5} strokeDasharray="3 3" />}
+                        <circle r={r + 8} fill={fill} fillOpacity={0.15} />
+                        <circle r={r} fill={fill} fillOpacity={0.4} stroke={fill} strokeWidth={2} />
+                        <text y={5} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize={11} fill="oklch(0.92 0.012 80)" fontWeight={600}>
+                          {n.tag}
+                        </text>
+                        <text y={-r - 5} textAnchor="middle" fontFamily="Space Mono, monospace" fontSize={8} fontWeight={700} fill={fill}>
+                          {c === "red" ? "[CRIT]" : c === "yellow" ? "[WARN]" : "[SAFE]"}
+                        </text>
+                        <text y={r + 18} textAnchor="middle" fontFamily="Rajdhani, sans-serif" fontSize={11} letterSpacing={1} fill="oklch(0.59 0.025 80)">
+                          {n.name}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+            </div>
           )}
         </ForgePanel>
       </div>
