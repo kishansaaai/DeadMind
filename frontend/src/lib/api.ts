@@ -1,4 +1,5 @@
 import { mock } from "./mock-data";
+import { toast } from "sonner";
 
 const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:8000";
 const MOCK_ONLY = (import.meta.env.VITE_API_MOCK as string | undefined) === "1";
@@ -41,6 +42,9 @@ async function req<T>(path: string, init: RequestInit | undefined, fallback: () 
     if (typeof console !== "undefined") {
       console.warn("[DeadMind] live API unreachable — switching permanently to mock data for this session.", err);
     }
+    toast.error("Live API offline or unreachable. Falling back to local high-fidelity cognitive simulation.", {
+      id: "api-offline-fallback",
+    });
     return await fallback();
   }
 }
