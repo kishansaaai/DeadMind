@@ -222,11 +222,11 @@ function FreshnessHeatmap() {
                   <Stat2 label="Refs" value={d.reference_count} />
                   <Stat2 label="Conflicts" value={d.contradiction_count} danger={d.contradiction_count > 0} />
                 </div>
-                <div className="mt-2 h-1 bg-muted/40 border border-border">
+                <div className="mt-2 h-1 bg-muted/40 border border-border overflow-hidden">
                   <div
                     className="h-full"
                     style={{
-                      width: `${d.freshness_score * 100}%`,
+                      width: `${Math.min(100, Math.max(0, d.freshness_score * 100))}%`,
                       background:
                         g.tone === "fire"
                           ? "oklch(0.65 0.24 28)"

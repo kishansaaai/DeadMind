@@ -167,7 +167,7 @@ def get_half_life():
         freshness = 100 - (age_penalty + contra_penalty - ref_bonus)
         freshness = max(0, min(100, freshness))
         
-        d["freshness_score"] = freshness
+        d["freshness_score"] = freshness / 100.0
         d["status"] = "FRESH" if freshness > 70 else ("STALE WARNING" if freshness > 40 else "CRITICAL DANGER")
         docs.append(d)
     return docs
