@@ -23,7 +23,13 @@ def schedule_bm25_rebuild():
         _bm25_timer = threading.Timer(2.0, build_bm25_index)
         _bm25_timer.start()
 
-nlp = spacy.load("en_core_web_sm")
+_nlp_model = None
+
+def get_nlp():
+    global _nlp_model
+    if _nlp_model is None:
+        _nlp_model = spacy.load("en_core_web_sm")
+    return _nlp_model
 
 def build_alias_index(conn):
     cursor = conn.cursor()
@@ -41,7 +47,7 @@ def resolve_coreference(mention: str, alias_index: dict, threshold: int = 80) ->
     return None
 
 def extract_entities_nlp(text: str, alias_index: dict):
-    doc = nlp(text)
+    doc = get_nlp()(text)
     equipment_mentions = [ent.text for ent in doc.ents if ent.label_ in ("ORG", "PRODUCT", "FAC")]
     resolved_tags = list({
         resolve_coreference(m, alias_index) for m in equipment_mentions

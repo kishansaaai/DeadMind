@@ -22,16 +22,8 @@ def run():
     except Exception as e:
         print("Failed to install requirements or spacy model:", e)
 
-    # 2. Seed database
-    print("Seeding database...")
-    try:
-        subprocess.run(
-            [sys.executable, "generate_demo_data.py"],
-            check=True,
-            cwd=os.path.dirname(os.path.abspath(__file__))
-        )
-    except Exception as e:
-        print("Failed to seed database:", e)
+    # 2. Seed database (skipped to save memory on Render, db is committed)
+    print("Skipping generate_demo_data.py (database should be checked into git)...")
         
     # 3. Start server
     print("Starting FastAPI/Uvicorn server at http://localhost:8000 ...")
