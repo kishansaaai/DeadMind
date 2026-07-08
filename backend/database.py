@@ -192,6 +192,65 @@ def init_db():
     )
     """)
 
+    # 13. Regulatory Requirements Registry
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS regulatory_requirements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source TEXT,           -- 'OISD-STD-118', 'Factory Act 1948 Sec 87', 'PESO Rule 34', 'CPCB Norm', ...
+        clause_id TEXT,        -- e.g. 'OISD-118-7.3.2'
+        clause_text TEXT,      -- normative requirement text, plain English paraphrase
+        applies_to_equipment TEXT,   -- comma-separated equipment tags or 'ALL'
+        applies_to_doc_type TEXT,    -- 'SOP', 'Inspection Report', 'Maintenance Log', 'ALL'
+        criticality TEXT,       -- 'Statutory', 'Advisory'
+        review_frequency_months INTEGER
+    )
+    """)
+
+    # 14. Compliance Gaps (computed + cached results of the mapper)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS compliance_gaps (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        requirement_id INTEGER,
+        equipment_tag TEXT,
+        gap_type TEXT,          -- 'Missing Evidence', 'Stale Evidence', 'Contradicted', 'Compliant'
+        evidence_doc_id INTEGER,
+        confidence REAL,
+        detected_on TEXT,
+        severity TEXT,          -- 'Critical', 'Major', 'Minor'
+        recommended_action TEXT,
+        FOREIGN KEY (requirement_id) REFERENCES regulatory_requirements(id),
+        FOREIGN KEY (evidence_doc_id) REFERENCES documents(id)
+    )
+    """)
+
+    # 15. Incidents / Near-Misses (feeds the pattern engine)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS incidents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        equipment_tag TEXT,
+        incident_type TEXT,     -- 'Incident', 'Near-Miss', 'Audit Finding', 'Non-Conformance'
+        description TEXT,
+        reported_by TEXT,
+        reported_on TEXT,
+        severity TEXT           -- 'High', 'Medium', 'Low'
+    )
+    """)
+
+    # 16. Detected Failure Patterns (output of clustering incidents/near-misses)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS failure_patterns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pattern_summary TEXT,
+        equipment_tags TEXT,     -- comma-separated, all equipment showing the pattern
+        member_incident_ids TEXT,-- comma-separated incident ids in this cluster
+        confidence REAL,
+        first_seen TEXT,
+        last_seen TEXT,
+        recommended_warning TEXT,
+        status TEXT DEFAULT 'Active'  -- 'Active', 'Acknowledged', 'Resolved'
+    )
+    """)
+
     conn.commit()
     
     # Auto-seed if engineers table is empty
@@ -369,6 +428,44 @@ def auto_seed_db(conn):
     INSERT INTO sop_compliance (sop_id, step_number, step_desc, compliance_rate, workaround_detected)
     VALUES (?, ?, ?, ?, ?)
     """, compliance)
+
+    # 13. Regulatory Requirements (representative subset — extend with real OISD/PESO text for production)
+    regulatory_requirements = [
+        ("OISD-STD-118", "OISD-118-7.3.2",
+         "Pressure relief valves on high-pressure boilers shall be tested and re-certified at least once every 12 months.",
+         "B-101,BOILER-2", "Inspection Report", "Statutory", 12),
+        ("Factory Act 1948", "FACT-87-1",
+         "Every hazardous process shall have a documented safe operating procedure reviewed at least every 24 months.",
+         "ALL", "SOP", "Statutory", 24),
+        ("PESO Rule 34", "PESO-34-2",
+         "Static and rotating equipment handling flammable process fluids shall undergo vibration/leak inspection every 6 months.",
+         "P-302,P-304,C-104,TURBINE-02,TURBINE-04", "Inspection Report", "Statutory", 6),
+        ("CPCB Environmental Norm", "CPCB-ENV-9",
+         "Flue gas emission monitoring reports for utility boilers shall be filed at least quarterly.",
+         "B-101,BOILER-2", "Inspection Report", "Statutory", 3),
+        ("OISD-STD-105", "OISD-105-4.1",
+         "Electrical switchgear rooms shall have thermographic inspection records updated at least every 6 months.",
+         "S-501", "Inspection Report", "Statutory", 6),
+    ]
+    cursor.executemany("""
+    INSERT INTO regulatory_requirements (
+        source, clause_id, clause_text, applies_to_equipment, applies_to_doc_type,
+        criticality, review_frequency_months
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, regulatory_requirements)
+    
+    # 14. Incidents & Near-Misses
+    incidents = [
+        ("P-302", "Near-Miss", "Operator noticed unusual noise before cavitation alarm triggered; caught early.", "Shift Team B", "2023-02-10", "Medium"),
+        ("P-304", "Near-Miss", "Backup pump showed early suction pressure drop similar to P-302's historic pattern.", "Shift Team A", "2024-05-02", "Medium"),
+        ("C-104", "Incident", "Compressor valve chattering recurred 3 days after an electrical-only fix, consistent with earlier mechanical root cause.", "Amit Patel", "2019-04-25", "High"),
+        ("S-501", "Audit Finding", "Thermography inspection interval exceeded 6 months before switchgear overheating was caught.", "Internal Audit", "2024-02-15", "High"),
+        ("V-205", "Non-Conformance", "Positioner cold-weather drift reappeared at a different valve after being 'resolved' at V-205 in 2021.", "Vikram Sen", "2023-12-01", "Medium"),
+    ]
+    cursor.executemany("""
+    INSERT INTO incidents (equipment_tag, incident_type, description, reported_by, reported_on, severity)
+    VALUES (?, ?, ?, ?, ?, ?)
+    """, incidents)
 
     # 10. Documents
     import datetime

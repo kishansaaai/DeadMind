@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { PageHeader, ForgePanel, LoadingBlock, Tag, EquipmentTag } from "@/components/forge";
 import { toast } from "sonner";
-import { FileUp, Mic, Square, Sparkles, Link2 } from "lucide-react";
+import { FileUp, Mic, Square, Sparkles, Link2, Scan } from "lucide-react";
 
 export const Route = createFileRoute("/ingest")({
   head: () => ({
@@ -24,8 +24,9 @@ function Ingest() {
         title="Ingestion & Active Capture"
         description="Preserve a mind: upload logs, record voice notes from retiring engineers, and let the resolver collapse heterogeneous aliases."
       />
-      <div className="p-6 grid gap-4 lg:grid-cols-3">
+      <div className="p-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <DocumentUpload />
+        <VisionUpload />
         <VoiceCapture />
         <CMMSSyncPanel />
       </div>
@@ -387,4 +388,87 @@ function blobToBase64(blob: Blob): Promise<string> {
     r.onerror = reject;
     r.readAsDataURL(blob);
   });
+}
+
+function VisionUpload() {
+  const [file, setFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<"scan" | "pid">("scan");
+  const [engineer, setEngineer] = useState("Auto-Route");
+  const engineersQ = useQuery({ queryKey: ["engineers"], queryFn: api.engineers });
+  
+  const m = useMutation({
+    mutationFn: async () => {
+      const fd = new FormData();
+      if (!file) throw new Error("No file");
+      fd.append("file", file);
+      if (mode === "scan") fd.append("engineer", engineer);
+      const endpoint = mode === "scan" ? "/api/ingest-scan" : "/api/ingest-pid";
+      return fetch(endpoint, { method: "POST", body: fd }).then(res => res.json());
+    },
+    onSuccess: (data) => toast.success(mode === "scan" ? "Scanned form indexed" : "P&ID Processed"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Upload failed"),
+  });
+
+  return (
+    <ForgePanel className="p-5 flex flex-col justify-between">
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Scan className="h-4 w-4 text-primary" />
+          <h2 className="font-display uppercase tracking-wider text-lg">Document Intelligence</h2>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          Upload scanned inspection forms (OCR) or P&ID drawings (Computer Vision bounding box demo).
+        </p>
+
+        <form onSubmit={(e) => { e.preventDefault(); if(file) m.mutate(); }} className="space-y-3">
+          <Field label="Upload Mode">
+            <select value={mode} onChange={(e: any) => setMode(e.target.value)} className={inputCls}>
+              <option value="scan">OCR (Scanned Form)</option>
+              <option value="pid">CV (P&ID Drawing)</option>
+            </select>
+          </Field>
+          
+          {mode === "scan" && (
+            <Field label="Author">
+              <select value={engineer} onChange={(e) => setEngineer(e.target.value)} className={inputCls}>
+                <option value="Auto-Route">— Auto-detect —</option>
+                {(engineersQ.data ?? []).map((eng) => (
+                  <option key={eng.name} value={eng.name}>{eng.name}</option>
+                ))}
+              </select>
+            </Field>
+          )}
+
+          <Field label="File (.png, .jpg, .pdf)">
+            <input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => setFile(e.target.files?.[0] || null)} className="w-full text-xs" />
+          </Field>
+
+          <button
+            type="submit"
+            disabled={m.isPending || !file}
+            className="w-full bg-primary text-primary-foreground px-4 py-2 font-display uppercase tracking-wider text-sm hover:bg-primary/90 disabled:opacity-40"
+          >
+            {m.isPending ? "Processing..." : "Process Document"}
+          </button>
+        </form>
+
+        {m.data && mode === "scan" && (
+          <div className="mt-4 p-3 bg-muted/20 border border-border text-xs">
+            <div className="font-semibold text-primary uppercase">OCR Success</div>
+            <div>Extracted chars: {m.data.extracted_chars}</div>
+            <div>Equipment found: {m.data.equipment_tags_detected?.join(", ") || "None"}</div>
+            <div>Doc ID: {m.data.doc_id}</div>
+          </div>
+        )}
+
+        {m.data && mode === "pid" && (
+           <div className="mt-4 p-3 bg-muted/20 border border-border text-xs">
+            <div className="font-semibold text-primary uppercase">CV Parsing Success</div>
+            <div>Symbols localized: {m.data.symbol_count}</div>
+            <div>Process lines localized: {m.data.process_line_count}</div>
+          </div>
+        )}
+      </div>
+    </ForgePanel>
+  );
 }

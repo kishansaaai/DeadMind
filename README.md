@@ -38,7 +38,16 @@ DeadMind structures knowledge around **4 specialized persona views** matching cr
    * **Knowledge Freshness Heatmap:** Grid visualization of documentation age (Fresh: <6 months, Stale: 6-18 months, Critical: >18 months).
    * **Shift Note Analyzer:** Analyzes raw entries to flag immediate violations against SOP clauses.
 
-4. **Admin View (Ingestion & Active Capture - `/ingest`)**
+4. **QHS Manager View (Regulatory Compliance Intelligence - `/compliance`)**
+   * Automatically maps regulatory requirements (e.g. OISD-118, Factory Act) against the existing document corpus.
+   * Detects "Missing Evidence" or "Stale Evidence" based on document age versus mandated review frequency.
+
+5. **Reliability Engineer View (Lessons Learned Engine - `/lessons`)**
+   * Cross-equipment failure pattern detection using unsupervised semantic clustering.
+   * Automatically generates proactive warnings when multiple isolated incidents share a common semantic signature.
+
+6. **Admin View (Ingestion & Active Capture - `/ingest`)**
+   * **Document Intelligence (OCR & CV):** Extracts text from scanned inspection forms and localizes P&ID symbols via OpenCV.
    * **Entity Coreference Resolver:** Collapse heterogeneous aliases (e.g., "Boiler 101" = "B-101" = "BOILER-2").
    * **Authorship Ingestion Engine:** processes content, attributes it, and extracts structured entities.
    * **Active Capture (Voice Recorder):** Uses Browser MediaRecorder API to record expert notes, transcribe them, and automatically index them against their cognitive profile.
@@ -83,6 +92,7 @@ graph TD
 | **Frontend** | Next.js, React 19, TypeScript, Tailwind CSS, TanStack Router & Query |
 | **Backend** | Python, FastAPI, SQLite |
 | **RAG / AI** | sentence-transformers (all-MiniLM + ms-marco cross-encoder) + FAISS vector search, spaCy NER + fuzzy coreference resolution, faster-whisper STT, Groq LLM (llama-3.3-70b) with retrieval-grounded fallback templates |
+| **Document Intelligence** | pytesseract (OCR), pdf2image, opencv-python-headless (CV P&ID parsing) |
 | **Design** | Dark terminal aesthetic, custom CSS micro-animations, oklch colors |
 
 ---
@@ -141,6 +151,9 @@ For production deployment, the architecture scales as follows:
 ## ═══════════════════════════════════════
 
 ### Backend Setup
+
+**System Dependencies:** You must install `tesseract-ocr` and `poppler-utils` via your system package manager (e.g., `apt-get install tesseract-ocr poppler-utils` or `brew install tesseract poppler`) to enable the Document Intelligence pipeline.
+
 1. Navigate to the root directory.
 2. Install Python dependencies:
    ```bash

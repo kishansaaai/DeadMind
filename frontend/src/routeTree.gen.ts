@@ -9,11 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LessonsRouteImport } from './routes/lessons'
 import { Route as IngestRouteImport } from './routes/ingest'
 import { Route as CopilotRouteImport } from './routes/copilot'
+import { Route as ComplianceRouteImport } from './routes/compliance'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as IndexRouteImport } from './routes/index'
 
+const LessonsRoute = LessonsRouteImport.update({
+  id: '/lessons',
+  path: '/lessons',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IngestRoute = IngestRouteImport.update({
   id: '/ingest',
   path: '/ingest',
@@ -22,6 +29,11 @@ const IngestRoute = IngestRouteImport.update({
 const CopilotRoute = CopilotRouteImport.update({
   id: '/copilot',
   path: '/copilot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComplianceRoute = ComplianceRouteImport.update({
+  id: '/compliance',
+  path: '/compliance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuditRoute = AuditRouteImport.update({
@@ -38,39 +50,67 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
+  '/compliance': typeof ComplianceRoute
   '/copilot': typeof CopilotRoute
   '/ingest': typeof IngestRoute
+  '/lessons': typeof LessonsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
+  '/compliance': typeof ComplianceRoute
   '/copilot': typeof CopilotRoute
   '/ingest': typeof IngestRoute
+  '/lessons': typeof LessonsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
+  '/compliance': typeof ComplianceRoute
   '/copilot': typeof CopilotRoute
   '/ingest': typeof IngestRoute
+  '/lessons': typeof LessonsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/audit' | '/copilot' | '/ingest'
+  fullPaths:
+    | '/'
+    | '/audit'
+    | '/compliance'
+    | '/copilot'
+    | '/ingest'
+    | '/lessons'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/audit' | '/copilot' | '/ingest'
-  id: '__root__' | '/' | '/audit' | '/copilot' | '/ingest'
+  to: '/' | '/audit' | '/compliance' | '/copilot' | '/ingest' | '/lessons'
+  id:
+    | '__root__'
+    | '/'
+    | '/audit'
+    | '/compliance'
+    | '/copilot'
+    | '/ingest'
+    | '/lessons'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuditRoute: typeof AuditRoute
+  ComplianceRoute: typeof ComplianceRoute
   CopilotRoute: typeof CopilotRoute
   IngestRoute: typeof IngestRoute
+  LessonsRoute: typeof LessonsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/lessons': {
+      id: '/lessons'
+      path: '/lessons'
+      fullPath: '/lessons'
+      preLoaderRoute: typeof LessonsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ingest': {
       id: '/ingest'
       path: '/ingest'
@@ -83,6 +123,13 @@ declare module '@tanstack/react-router' {
       path: '/copilot'
       fullPath: '/copilot'
       preLoaderRoute: typeof CopilotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compliance': {
+      id: '/compliance'
+      path: '/compliance'
+      fullPath: '/compliance'
+      preLoaderRoute: typeof ComplianceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/audit': {
@@ -105,8 +152,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuditRoute: AuditRoute,
+  ComplianceRoute: ComplianceRoute,
   CopilotRoute: CopilotRoute,
   IngestRoute: IngestRoute,
+  LessonsRoute: LessonsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

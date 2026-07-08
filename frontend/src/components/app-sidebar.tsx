@@ -17,6 +17,8 @@ const items = [
   { title: "Plant Map", url: "/", icon: Network, role: "CFO" },
   { title: "Expert Copilot", url: "/copilot", icon: MessageSquareCode, role: "Technician" },
   { title: "Operations Audit", url: "/audit", icon: ShieldCheck, role: "Plant Head" },
+  { title: "Compliance", url: "/compliance", icon: ShieldCheck, role: "QHS Manager" },
+  { title: "Lessons Learned", url: "/lessons", icon: Network, role: "Reliability Eng" },
   { title: "Ingestion", url: "/ingest", icon: Upload, role: "Admin" },
 ] as const;
 

@@ -435,6 +435,57 @@ def get_health():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unhealthy: {str(e)}")
 
+from backend.compliance import run_compliance_scan
+
+@app.get("/api/compliance-gaps")
+def get_compliance_gaps():
+    """Runs (or re-runs) the regulatory compliance scan and returns gap report."""
+    try:
+        results = run_compliance_scan()
+        critical = sum(1 for r in results if r["severity"] == "Critical")
+        major = sum(1 for r in results if r["severity"] == "Major")
+        return {
+            "gaps": results,
+            "summary": {"total": len(results), "critical": critical, "major": major,
+                        "compliant": len(results) - critical - major}
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Compliance scan failed: {e}")
+
+from backend.lessons_engine import detect_patterns
+
+@app.get("/api/lessons-learned")
+def get_lessons_learned():
+    """Runs pattern detection across incidents/near-misses and returns active warnings."""
+    try:
+        patterns = detect_patterns()
+        return {"patterns": patterns, "count": len(patterns)}
+    except Exception as e:
+        raise HTTPException(500, f"Pattern detection failed: {e}")
+
+from backend.ocr_ingestion import ocr_scanned_document, parse_pid_symbols
+
+@app.post("/api/ingest-scan")
+async def ingest_scan(file: UploadFile = File(...), engineer: str = Form(...)):
+    """OCR ingestion for scanned inspection forms / faxed shift logs."""
+    contents = await file.read()
+    is_pdf = file.filename.lower().endswith(".pdf")
+    try:
+        result = ocr_scanned_document(contents, file.filename, engineer, is_pdf=is_pdf)
+        return result
+    except Exception as e:
+        raise HTTPException(500, f"OCR ingestion failed: {e}")
+
+@app.post("/api/ingest-pid")
+async def ingest_pid(file: UploadFile = File(...)):
+    """Basic CV symbol/line localization for P&ID drawings."""
+    contents = await file.read()
+    try:
+        result = parse_pid_symbols(contents)
+        return result
+    except Exception as e:
+        raise HTTPException(500, f"P&ID parsing failed: {e}")
+
 # Mount static files
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 

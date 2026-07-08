@@ -12,3 +12,7 @@ rank-bm25
 httpx
 pytest
 faster-whisper
+
+pytesseract
+pdf2image
+opencv-python-headless
