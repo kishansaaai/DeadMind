@@ -94,9 +94,9 @@ graph TD
 We benchmarked the system using a golden dataset of realistic field queries (featuring paraphrases, operational synonyms, and colloquialisms) mapped to canonical equipment tags.
 
 **Results (Precision @ 3):**
-* **Keyword Retrieval:** 40%
-* **Semantic Retrieval (FAISS + MiniLM):** 87%
-* **Hybrid RRF + Cross-Encoder Reranker:** 93%
+* **Keyword retrieval:** 40%
+* **Semantic retrieval:** 73%
+* **Hybrid RRF + reranking:** 80%
 
 Semantic search drastically outperforms legacy keyword matching because it inherently understands intent and domain paraphrasing without requiring exact token overlaps, and the cross-encoder pushes the most contextually relevant documents to the top. Run the benchmark yourself:
 ```bash

@@ -71,6 +71,6 @@ def reciprocal_rank_fusion(query: str, k: int = 5, rrf_k: int = 60):
         results.append({**meta, "id": doc_id, "fused_score": fused_scores[doc_id], "score": fused_scores[doc_id]})
     
     from backend.reranker import rerank_results
-    reranked_results = rerank_results(query, results, min_score=-10.0)
+    reranked_results = rerank_results(query, results, relative_gap=4.0)
     
     return reranked_results[:k]
