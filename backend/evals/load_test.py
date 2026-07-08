@@ -21,7 +21,7 @@ def gen_doc(i):
     text = random.choice(TEMPLATES).format(tag=tag, tag2=tag2)
     return f"Synthetic Log {i}", text
 
-def run(n=50_000):
+def run(n=5000):
     from backend.database import init_db
     init_db()
     

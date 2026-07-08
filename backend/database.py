@@ -1,15 +1,23 @@
 import sqlite3
 import os
+from backend.db_engine import USE_POSTGRES, ensure_pgvector_schema
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "deadmind.db")
 
 def get_db_connection():
+    if USE_POSTGRES:
+        raise NotImplementedError("Postgres wiring is scaffolded in db_engine.py but requires query rewrites from SQLite to use SQLAlchemy.")
+        
     conn = sqlite3.connect(DB_PATH, timeout=30.0)
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
+    if USE_POSTGRES:
+        ensure_pgvector_schema()
+        return
+        
     conn = get_db_connection()
     cursor = conn.cursor()
     

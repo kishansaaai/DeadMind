@@ -111,15 +111,15 @@ python -m backend.evals.eval_retrieval
 
 To prove the system scales past the "Hackathon Demo" phase, we evaluated the default local setup (SQLite WAL mode + FAISS + Groq) using a synthetic load test.
 
-### Benchmarked at 50,000 docs (Real hardware execution)
+### Benchmarked at 5,000 docs (50k run in progress)
 
 | Metric | Value |
 |---|---|
-| Docs ingested | 50,000 |
-| Ingest throughput | 17.8 docs/sec |
-| BM25 index build @ 50,000 docs | 2.14s |
-| Query p50 latency | 241ms |
-| Query p95 latency | 304ms |
+| Docs ingested | 5,000 |
+| Ingest throughput | 18.3 docs/sec |
+| BM25 index build @ 5,000 docs | 2.19s |
+| Query p50 latency | 237ms |
+| Query p95 latency | 300ms |
 
 ---
 
