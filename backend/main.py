@@ -374,8 +374,8 @@ async def chat_expert_stream(payload: ChatQuery, request: Request):
 @app.post("/api/voice-note")
 def save_voice_note(payload: VoiceNotePayload):
     try:
-        from backend.transcription import transcribe_audio
         try:
+            from backend.transcription import transcribe_audio
             transcript = transcribe_audio(payload.audio_base64)
             if not transcript.strip():
                 transcript = payload.transcript  # fallback to client-provided text

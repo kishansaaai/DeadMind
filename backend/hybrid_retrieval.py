@@ -55,7 +55,7 @@ def reciprocal_rank_fusion(query: str, k: int = 5, rrf_k: int = 60):
 
     id_to_meta = {d["id"]: d for d in _bm25_docs}
     id_to_vecmeta = {r["id"]: r for r in vector_results}
-    ranked_ids = sorted(fused_scores, key=lambda i: -fused_scores[i])[:k]
+    ranked_ids = sorted(fused_scores, key=lambda i: -fused_scores[i])[:max(k * 3, 15)]
 
     results = []
     for doc_id in ranked_ids:
