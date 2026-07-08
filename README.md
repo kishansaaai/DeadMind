@@ -104,9 +104,9 @@ graph TD
 We benchmarked the system using a golden dataset of realistic field queries (featuring paraphrases, operational synonyms, and colloquialisms) mapped to canonical equipment tags.
 
 **Results (Precision @ 3):**
-* **Keyword retrieval:** 40%
-* **Semantic retrieval:** 73%
-* **Hybrid RRF + reranking:** 80%
+* **Keyword retrieval:** 58%
+* **Semantic retrieval:** 62%
+* **Hybrid RRF + reranking:** 66%
 
 Semantic search drastically outperforms legacy keyword matching because it inherently understands intent and domain paraphrasing without requiring exact token overlaps, and the cross-encoder pushes the most contextually relevant documents to the top. Run the benchmark yourself:
 ```bash
@@ -138,7 +138,7 @@ To prove the system scales past the "Hackathon Demo" phase, we evaluated the def
 ## ═══════════════════════════════════════
 
 For production deployment, the architecture scales as follows:
-* **Database Upgrade:** Migrate file-based SQLite to **PostgreSQL** with **pgvector** for hybrid relational + vector storage.
+* **Database Upgrade (scaffolded, not yet implemented):** The pgvector schema exists in `db_engine.py`. The query layer still needs to be rewritten from raw `sqlite3` cursors to SQLAlchemy/psycopg2 before this is usable — tracked as the top follow-up item, not claimed as production-ready today.
 * **Vector Indexing:** Implement **FAISS** or **Pinecone** to scale RAG embeddings.
 * **Storage:** Store uploaded documents and audio recordings in **Amazon S3**.
 * **Queue Management:** Implement **Celery** with **Redis** to run document ingestion and transcription as asynchronous background tasks.
@@ -213,7 +213,7 @@ For production deployment, the architecture scales as follows:
    * Click **Consensus** to see a side-by-side comparison of expert recommendations.
 3. **Retrieval Benchmark:**
    * In the terminal, run `python -m backend.evals.eval_retrieval`.
-   * Watch the retrieval precision jump from keyword (40%) to semantic matching (87%) live in the eval output, proving the value of semantic search on paraphrased field language.
+   * Watch the retrieval precision jump from keyword (58%) to hybrid (66%) live in the eval output, proving the value of semantic search on paraphrased field language.
 4. **Plant Head Audit:**
    * Navigate to `/audit` and paste the pre-filled shift note about Boiler 101 temperature drift.
    * Click **Analyze** to immediately flag the specific SOP safety violation and view Rajan's historical troubleshooting guide.

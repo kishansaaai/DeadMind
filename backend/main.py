@@ -47,10 +47,39 @@ from backend.database import init_db, get_db_connection
 from backend.ingestion import ingest_document
 from backend.llm import generate_expert_answer
 
+from backend.db_engine import USE_POSTGRES
+
+if USE_POSTGRES:
+    raise RuntimeError(
+        "FATAL: USE_POSTGRES=true but the Postgres query layer is not "
+        "implemented. The app will not start against Postgres yet. "
+        "Unset USE_POSTGRES / DATABASE_URL to run on SQLite, or see "
+        "backend/db_engine.py for scaffold status and finish the "
+        "SQLAlchemy migration before enabling this flag."
+    )
+
 # Initialize database
 init_db()
 
 app = FastAPI(title="DeadMind API", version="1.0")
+
+MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15MB — generous for scanned forms/P&IDs
+ALLOWED_UPLOAD_CONTENT_TYPES = {"application/pdf", "image/png", "image/jpeg"}
+
+async def read_and_validate_upload(file: UploadFile) -> bytes:
+    if file.content_type not in ALLOWED_UPLOAD_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported file type '{file.content_type}'. "
+                   f"Allowed: {sorted(ALLOWED_UPLOAD_CONTENT_TYPES)}"
+        )
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds {MAX_UPLOAD_BYTES // (1024*1024)}MB limit"
+        )
+    return contents
 
 from fastapi.responses import JSONResponse
 from fastapi import Request as FastAPIRequest
@@ -318,56 +347,47 @@ async def upload_document(
     doc_type: str = Form("Maintenance Log"),
     engineer: Optional[str] = Form(None)
 ):
-    try:
-        res = ingest_document(title, content, doc_type, engineer)
-        return {"status": "success", "data": res}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    res = ingest_document(title, content, doc_type, engineer)
+    return {"status": "success", "data": res}
 
 @app.post("/api/feedback")
 def submit_feedback(payload: FeedbackPayload):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        import datetime
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        cursor.execute("""
-        INSERT INTO feedback (doc_id, query, is_positive, timestamp)
-        VALUES (?, ?, ?, ?)
-        """, (payload.doc_id, payload.query, 1 if payload.is_positive else 0, timestamp))
-        conn.commit()
-        conn.close()
-        return {"status": "success"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    import datetime
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("""
+    INSERT INTO feedback (doc_id, query, is_positive, timestamp)
+    VALUES (?, ?, ?, ?)
+    """, (payload.doc_id, payload.query, 1 if payload.is_positive else 0, timestamp))
+    conn.commit()
+    conn.close()
+    return {"status": "success"}
 
 @app.post("/api/chat", response_model=ExpertAnswerResponse)
 def chat_expert(payload: ChatQuery, request: Request):
     check_rate_limit(request)
-    try:
-        # Perform entity normalization mapping standard names first!
-        query = payload.query
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT standard_name, alias_name FROM coreference_map")
-        coref_rows = cursor.fetchall()
-        conn.close()
-        
-        # Replace aliases with standard names to perform clean retrieval
-        for row in coref_rows:
-            alias = row["alias_name"].lower()
-            if alias in query.lower():
-                query = query.lower().replace(alias, row["standard_name"])
-                
-        answer = generate_expert_answer(query, payload.engineer)
-        from backend.hybrid_retrieval import reciprocal_rank_fusion
-        from backend.uncertainty import compute_uncertainty
-        sources_for_uncertainty = reciprocal_rank_fusion(query)
-        answer["uncertainty"] = compute_uncertainty(query, sources_for_uncertainty, payload.engineer)
-        
-        return answer
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # Perform entity normalization mapping standard names first!
+    query = payload.query
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT standard_name, alias_name FROM coreference_map")
+    coref_rows = cursor.fetchall()
+    conn.close()
+    
+    # Replace aliases with standard names to perform clean retrieval
+    for row in coref_rows:
+        alias = row["alias_name"].lower()
+        if alias in query.lower():
+            query = query.lower().replace(alias, row["standard_name"])
+            
+    answer = generate_expert_answer(query, payload.engineer)
+    from backend.hybrid_retrieval import reciprocal_rank_fusion
+    from backend.uncertainty import compute_uncertainty
+    sources_for_uncertainty = reciprocal_rank_fusion(query)
+    answer["uncertainty"] = compute_uncertainty(query, sources_for_uncertainty, payload.engineer)
+    
+    return answer
 
 from fastapi.responses import StreamingResponse
 import json as json_lib
@@ -392,99 +412,81 @@ async def chat_expert_stream(payload: ChatQuery, request: Request):
 @app.post("/api/voice-note")
 def save_voice_note(payload: VoiceNotePayload):
     try:
-        try:
-            from backend.transcription import transcribe_audio
-            transcript = transcribe_audio(payload.audio_base64)
-            if not transcript.strip():
-                transcript = payload.transcript  # fallback to client-provided text
-        except Exception as e:
-            print(f"[STT] Whisper failed, falling back to client transcript: {e}")
-            transcript = payload.transcript
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        import datetime
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        cursor.execute("""
-        INSERT INTO voice_notes (engineer, audio_base64, transcript, timestamp)
-        VALUES (?, ?, ?, ?)
-        """, (payload.engineer, payload.audio_base64, transcript, timestamp))
-        conn.commit()
-        conn.close()
-        
-        ingest_document(
-            title=f"Voice Note Capture - {payload.engineer}",
-            content=transcript,
-            doc_type="Voice Note",
-            forced_author=payload.engineer
-        )
-        
-        return {"status": "success", "message": "Voice note transcribed and indexed.", "transcript": transcript}
+        from backend.transcription import transcribe_audio
+        transcript = transcribe_audio(payload.audio_base64)
+        if not transcript.strip():
+            transcript = payload.transcript  # fallback to client-provided text
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[STT] Whisper failed, falling back to client transcript: {e}")
+        transcript = payload.transcript
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    import datetime
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("""
+    INSERT INTO voice_notes (engineer, audio_base64, transcript, timestamp)
+    VALUES (?, ?, ?, ?)
+    """, (payload.engineer, payload.audio_base64, transcript, timestamp))
+    conn.commit()
+    conn.close()
+    
+    ingest_document(
+        title=f"Voice Note Capture - {payload.engineer}",
+        content=transcript,
+        doc_type="Voice Note",
+        forced_author=payload.engineer
+    )
+    
+    return {"status": "success", "message": "Voice note transcribed and indexed.", "transcript": transcript}
 
 @app.get("/api/health")
 def get_health():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-        cursor.fetchone()
-        conn.close()
-        return {"status": "healthy", "database": "connected", "engine": "FastAPI"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unhealthy: {str(e)}")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1")
+    cursor.fetchone()
+    conn.close()
+    return {"status": "healthy", "database": "connected", "engine": "FastAPI"}
 
 from backend.compliance import run_compliance_scan
 
 @app.get("/api/compliance-gaps")
 def get_compliance_gaps():
     """Runs (or re-runs) the regulatory compliance scan and returns gap report."""
-    try:
-        results = run_compliance_scan()
-        critical = sum(1 for r in results if r["severity"] == "Critical")
-        major = sum(1 for r in results if r["severity"] == "Major")
-        return {
-            "gaps": results,
-            "summary": {"total": len(results), "critical": critical, "major": major,
-                        "compliant": len(results) - critical - major}
-        }
-    except Exception as e:
-        raise HTTPException(500, f"Compliance scan failed: {e}")
+    results = run_compliance_scan()
+    critical = sum(1 for r in results if r["severity"] == "Critical")
+    major = sum(1 for r in results if r["severity"] == "Major")
+    return {
+        "gaps": results,
+        "summary": {"total": len(results), "critical": critical, "major": major,
+                    "compliant": len(results) - critical - major}
+    }
 
 from backend.lessons_engine import detect_patterns
 
 @app.get("/api/lessons-learned")
 def get_lessons_learned():
     """Runs pattern detection across incidents/near-misses and returns active warnings."""
-    try:
-        patterns = detect_patterns()
-        return {"patterns": patterns, "count": len(patterns)}
-    except Exception as e:
-        raise HTTPException(500, f"Pattern detection failed: {e}")
+    patterns = detect_patterns()
+    return {"patterns": patterns, "count": len(patterns)}
 
 from backend.ocr_ingestion import ocr_scanned_document, parse_pid_symbols
 
 @app.post("/api/ingest-scan")
 async def ingest_scan(file: UploadFile = File(...), engineer: str = Form(...)):
     """OCR ingestion for scanned inspection forms / faxed shift logs."""
-    contents = await file.read()
+    contents = await read_and_validate_upload(file)
     is_pdf = file.filename.lower().endswith(".pdf")
-    try:
-        result = ocr_scanned_document(contents, file.filename, engineer, is_pdf=is_pdf)
-        return result
-    except Exception as e:
-        raise HTTPException(500, f"OCR ingestion failed: {e}")
+    result = ocr_scanned_document(contents, file.filename, engineer, is_pdf=is_pdf)
+    return result
 
 @app.post("/api/ingest-pid")
 async def ingest_pid(file: UploadFile = File(...)):
     """Basic CV symbol/line localization for P&ID drawings."""
-    contents = await file.read()
-    try:
-        result = parse_pid_symbols(contents)
-        return result
-    except Exception as e:
-        raise HTTPException(500, f"P&ID parsing failed: {e}")
+    contents = await read_and_validate_upload(file)
+    result = parse_pid_symbols(contents)
+    return result
 
 # Mount static files
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")

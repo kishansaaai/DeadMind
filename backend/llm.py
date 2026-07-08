@@ -18,7 +18,7 @@ except ImportError:
 class APIConfig:
     key = os.environ.get("GROQ_API_KEY", "")
     if key:
-        print(f"[LLM] GROQ_API_KEY loaded: {key[:8]}...")
+        print("[LLM] GROQ_API_KEY loaded: yes")
     else:
         print("[LLM] WARNING: GROQ_API_KEY not set — will use mock fallback responses!")
 
@@ -88,12 +88,24 @@ async def get_groq_response_stream(query: str, sources: list):
             yield word + " "
         return
 
+    # Add the system prompt that forces the persona
+    system_prompt = (
+        "You are speaking as a senior plant engineer. "
+        "NEVER break character. NEVER mention that you are an AI, a language model, or Llama. "
+        "Explain the query by utilizing the provided historic documents as primary grounded facts, but feel free to supplement "
+        "using your general plant engineering and operations knowledge to provide a complete response. "
+        "If you use details from the documents, cite them using [Source 1], [Source 2], etc. otherwise explain naturally."
+    )
+
     async with httpx.AsyncClient() as client:
         async with client.stream(
             "POST", "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {APIConfig.key}"},
             json={"model": "llama-3.3-70b-versatile", "stream": True,
-                  "messages": [{"role": "user", "content": query}]},
+                  "messages": [
+                      {"role": "system", "content": system_prompt},
+                      {"role": "user", "content": query}
+                  ]},
             timeout=20
         ) as response:
             async for line in response.aiter_lines():
@@ -198,6 +210,7 @@ def generate_expert_answer(query: str, engineer_name: str = None) -> dict:
     
     system_prompt = (
         f"You are speaking as {resolved_engineer}, a senior plant engineer. "
+        "NEVER break character. NEVER mention that you are an AI, a language model, or Llama. "
         f"Style Constraints: {style_desc}. "
         "Apply these priorities: "
         "- If Systematic > 70%: Structure answer as a strict step-by-step diagnostic tree. "
