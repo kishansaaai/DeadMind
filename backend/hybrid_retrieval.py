@@ -40,8 +40,13 @@ def reciprocal_rank_fusion(query: str, k: int = 5, rrf_k: int = 60):
 
     results = []
     for doc_id in ranked_ids:
-        meta = id_to_vecmeta.get(doc_id) or id_to_meta.get(doc_id, {})
-        # Map engineer_author to author to match retrieve_expert_knowledge_semantic output format
+        sql_meta = id_to_meta.get(doc_id, {})
+        vec_meta = id_to_vecmeta.get(doc_id, {})
+        # Merge with SQL as the base of truth (always has every column) and let
+        # vector metadata only ADD fields (like a fresher score), never silently drop one.
+        meta = {**sql_meta, **vec_meta}
+        if "content" not in meta or not meta["content"]:
+            meta["content"] = sql_meta.get("content", "")
         if "author" not in meta and "engineer_author" in meta:
             meta["author"] = meta["engineer_author"]
         results.append({**meta, "id": doc_id, "fused_score": fused_scores[doc_id], "score": fused_scores[doc_id]})

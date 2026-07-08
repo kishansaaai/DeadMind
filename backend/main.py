@@ -34,6 +34,21 @@ init_db()
 
 app = FastAPI(title="DeadMind API", version="1.0")
 
+from fastapi.responses import JSONResponse
+from fastapi import Request as FastAPIRequest
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: FastAPIRequest, exc: Exception):
+    print(f"[ERROR] Unhandled exception on {request.url.path}: {type(exc).__name__}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Something went wrong processing that request.",
+            "detail": str(exc) if os.environ.get("DEBUG") == "1" else "Internal error — check server logs.",
+            "path": str(request.url.path)
+        }
+    )
+
 from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,

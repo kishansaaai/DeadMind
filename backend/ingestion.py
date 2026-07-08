@@ -133,6 +133,7 @@ def ingest_document(title: str, content: str, doc_type: str = "Maintenance Log",
     
     store.add_document(doc_id, title + " " + content, {
         "title": title, 
+        "content": content,
         "author": author, 
         "equipment_tag": equipment_tag, 
         "failure_code": failure_code

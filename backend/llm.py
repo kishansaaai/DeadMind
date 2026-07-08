@@ -170,17 +170,22 @@ def generate_expert_answer(query: str, engineer_name: str = None) -> dict:
             "electrical": 50, "instrumentation": 50, "process": 50
         }
         
-    # Ground the response in the retrieved sources
     source_texts = []
     citations = []
     for idx, s in enumerate(sources):
-        source_texts.append(f"[Source {idx+1}] (Title: {s['title']}, Author: {s['author']}, Tag: {s['equipment_tag']}):\n{s['content']}")
+        content = s.get("content", "")
+        if not content:
+            print(f"[LLM] WARNING: source {s.get('id')} missing content field — check ingestion/vector_store sync")
+        source_texts.append(
+            f"[Source {idx+1}] (Title: {s.get('title', 'Untitled')}, "
+            f"Author: {s.get('author', 'Unknown')}, Tag: {s.get('equipment_tag', 'N/A')}):\n{content}"
+        )
         citations.append({
-            "id": s["id"],
-            "title": s["title"],
-            "author": s["author"],
-            "equipment_tag": s["equipment_tag"],
-            "failure_code": s["failure_code"]
+            "id": s.get("id"),
+            "title": s.get("title", "Untitled"),
+            "author": s.get("author", "Unknown"),
+            "equipment_tag": s.get("equipment_tag", "N/A"),
+            "failure_code": s.get("failure_code", "None")
         })
         
     # Format persona style based on fingerprint

@@ -126,11 +126,23 @@ For production deployment, the architecture scales as follows:
    ```bash
    pip install -r requirements.txt
    ```
-3. Seed the SQLite database with high-fidelity demo data:
+3. Download the spaCy language model:
+   ```bash
+   python -m spacy download en_core_web_sm
+   ```
+   If you hit an "externally managed environment" error (common on newer Ubuntu/Debian Python installs), use this instead:
+   ```bash
+   pip install --break-system-packages https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+   ```
+4. Pre-cache the embedding model (recommended before any offline/low-connectivity demo):
+   ```bash
+   python -m backend.warm_cache
+   ```
+5. Seed the SQLite database with high-fidelity demo data:
    ```bash
    python generate_demo_data.py
    ```
-4. Start the FastAPI server:
+6. Start the FastAPI server:
    ```bash
    python run.py
    ```
