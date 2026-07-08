@@ -8,3 +8,6 @@ rapidfuzz
 sentence-transformers
 faiss-cpu
 numpy
+rank-bm25
+httpx
+pytest

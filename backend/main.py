@@ -43,6 +43,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+def startup_event():
+    from backend.hybrid_retrieval import build_bm25_index
+    build_bm25_index()
+
 # Setup pathing
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -206,73 +211,20 @@ def get_half_life():
         docs.append(d)
     return docs
 
+from backend.consensus import synthesize_consensus
+
 # Endpoint 4: Multi-Expert Consensus Synthesis
 @app.post("/api/consensus")
 def post_consensus(payload: ChatQuery, request: Request):
     check_rate_limit(request)
     experts = ["Rajan Sharma", "Amit Patel", "Vikram Sen"]
-    results = {}
-    
-    for exp in experts:
-        ans = generate_expert_answer(payload.query, exp)
-        if ans["confidence"] > 0:
-            results[exp] = ans
-            
-    if not results:
-        return {
-            "consensus": "No expert records found matching this pattern. Recommending OEM escalation.",
-            "agreement": "None",
-            "weights": {},
-            "dissent": ""
-        }
-        
-    weights = {"Rajan Sharma": 91, "Vikram Sen": 82, "Amit Patel": 65}
-    best_exp = max(results.keys(), key=lambda k: weights.get(k, 50))
-    consensus_text = (
-        f"Consensus reached (weighted by historical resolution success). "
-        f"Primary recommendation follows {best_exp}'s approach: {results[best_exp]['answer']}"
-    )
-    
-    agreement_summary = f"All active and retired consultants suggest isolating the primary control line, with {best_exp} leading the sequence."
-    dissent_text = ""
-    if len(results) > 1:
-        other_exp = [e for e in results.keys() if e != best_exp][0]
-        dissent_text = f"{other_exp} highlighted a potential calibration drift that should be verified secondary to structural checks."
-        
-    return {
-        "consensus": consensus_text,
-        "agreement": agreement_summary,
-        "weights": {k: weights[k] for k in results.keys()},
-        "dissent": dissent_text
-    }
+    return synthesize_consensus(payload.query, experts)
 
 # Endpoint 5: Anomaly-Triggered Knowledge Surfacing
 @app.post("/api/analyze-shift-note")
 def post_analyze_shift_note(payload: ShiftNotePayload):
-    note = payload.note.lower()
-    triggered = False
-    details = {}
-    
-    if "b-101" in note or "boiler" in note or "steam" in note:
-        triggered = True
-        details = {
-            "tag": "B-101",
-            "expert": "Rajan Sharma (Preserved)",
-            "alert": "PROACTIVE ALERT: Boiler exhaust temperature drift detected.",
-            "guide": "Rajan resolved this pattern twice (2016, 2018). He recommends verifying control valve positioner zero tolerances first — do not adjust digital controller parameters.",
-            "causal_warning": "Warning: Downstream cavitation on Feedwater Pump P-302 is likely if pressure fluctuates (historic causal probability: 84%)."
-        }
-    elif "c-104" in note or "compressor" in note or "vibration" in note:
-        triggered = True
-        details = {
-            "tag": "C-104",
-            "expert": "Vikram Sen (Active)",
-            "alert": "PROACTIVE ALERT: Air line vibration thresholds exceeded.",
-            "guide": "Vikram Sen's 2025 logs indicate sensor mounting bolts loose on main casing.",
-            "causal_warning": "Warning: Solenoid interlock trip predicted on S-501 Switchgear section in 48 hours."
-        }
-        
-    return {"triggered": triggered, "details": details}
+    from backend.shift_analyzer import analyze_shift_note
+    return analyze_shift_note(payload.note)
 
 # Research Endpoint 1: Counterfactual Failure Simulation
 @app.get("/api/counterfactuals/{equipment_tag}")
@@ -372,6 +324,26 @@ def chat_expert(payload: ChatQuery, request: Request):
         return answer
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+from fastapi.responses import StreamingResponse
+import json as json_lib
+
+@app.post("/api/chat/stream")
+async def chat_expert_stream(payload: ChatQuery, request: Request):
+    check_rate_limit(request)
+
+    async def event_generator():
+        # Reuse existing retrieval + fingerprint logic, but stream Groq's response token-by-token
+        from backend.llm import get_groq_response_stream
+        from backend.hybrid_retrieval import reciprocal_rank_fusion
+        sources = reciprocal_rank_fusion(payload.query)
+        citations = [{"id": s["id"], "title": s["title"], "author": s.get("author", "")} for s in sources]
+        yield f"data: {json_lib.dumps({'type': 'citations', 'data': citations})}\n\n"
+        async for token in get_groq_response_stream(payload.query, sources):
+            yield f"data: {json_lib.dumps({'type': 'token', 'data': token})}\n\n"
+        yield f"data: {json_lib.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.post("/api/voice-note")
 def save_voice_note(payload: VoiceNotePayload):

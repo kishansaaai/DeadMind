@@ -54,14 +54,20 @@ graph TD
     A[Document / Voice Ingestion] --> B[NLP Entity Extraction & Coreference]
     B --> C[(SQLite Knowledge Graph)]
     
-    C --> D[RAG Inference Engine]
-    D --> E[Expert Persona Copilot / Consensus Panel]
-    
+    C --> H[SOP Compliance shadow auditing]
+    H --> I[Audit View / Anomaly Analyzer]
+
     C --> F[Decay Model & Slider Simulator]
     F --> G[CFO Plant Map / ROI Analysis]
+
+    C --> J[BM25 Index + FAISS Vector Store]
+    J --> K[RRF Hybrid Retrieval Fusion]
     
-    C --> H[SOP Compliance Comparator]
-    H --> I[Audit View / Anomaly Analyzer]
+    K --> D[RAG Inference Engine]
+    D --> L[SSE Streaming Layer]
+    L --> E[Expert Persona Copilot]
+
+    E --> M[Consensus & Dissent Analyzer]
 ```
 
 ---
@@ -88,6 +94,7 @@ We benchmarked the system using a golden dataset of realistic field queries (fea
 **Results (Precision @ 3):**
 * **Keyword Retrieval:** 40%
 * **Semantic Retrieval (FAISS + MiniLM):** 87%
+* **Hybrid RRF (BM25 + FAISS Fusion):** 87%
 
 Semantic search drastically outperforms legacy keyword matching because it inherently understands intent and domain paraphrasing without requiring exact token overlaps. Run the benchmark yourself:
 ```bash

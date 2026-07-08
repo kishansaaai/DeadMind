@@ -1,0 +1,49 @@
+from rank_bm25 import BM25Okapi
+from backend.database import get_db_connection
+from backend.vector_store import store
+from backend.retrieval import tokenize
+
+_bm25_index = None
+_bm25_docs = []
+
+def build_bm25_index():
+    global _bm25_index, _bm25_docs
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, title, content, engineer_author, equipment_tag, failure_code FROM documents")
+    _bm25_docs = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    corpus = [tokenize(d["title"] + " " + d["content"]) for d in _bm25_docs]
+    _bm25_index = BM25Okapi(corpus) if corpus else None
+
+def reciprocal_rank_fusion(query: str, k: int = 5, rrf_k: int = 60):
+    if _bm25_index is None:
+        build_bm25_index()
+
+    bm25_scores = _bm25_index.get_scores(tokenize(query)) if _bm25_index else []
+    bm25_ranked = sorted(range(len(bm25_scores)), key=lambda i: -bm25_scores[i])[:20]
+    bm25_ids = [_bm25_docs[i]["id"] for i in bm25_ranked]
+
+    vector_results = store.search(query, k=20)
+    vector_ids = [r["id"] for r in vector_results]
+
+    # RRF: score = sum(1 / (rrf_k + rank)) across both rankings
+    fused_scores = {}
+    for rank, doc_id in enumerate(bm25_ids):
+        fused_scores[doc_id] = fused_scores.get(doc_id, 0) + 1 / (rrf_k + rank)
+    for rank, doc_id in enumerate(vector_ids):
+        fused_scores[doc_id] = fused_scores.get(doc_id, 0) + 1 / (rrf_k + rank)
+
+    id_to_meta = {d["id"]: d for d in _bm25_docs}
+    id_to_vecmeta = {r["id"]: r for r in vector_results}
+    ranked_ids = sorted(fused_scores, key=lambda i: -fused_scores[i])[:k]
+
+    results = []
+    for doc_id in ranked_ids:
+        meta = id_to_vecmeta.get(doc_id) or id_to_meta.get(doc_id, {})
+        # Map engineer_author to author to match retrieve_expert_knowledge_semantic output format
+        if "author" not in meta and "engineer_author" in meta:
+            meta["author"] = meta["engineer_author"]
+        results.append({**meta, "id": doc_id, "fused_score": fused_scores[doc_id], "score": fused_scores[doc_id]})
+    
+    return results

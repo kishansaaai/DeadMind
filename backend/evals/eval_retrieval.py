@@ -9,6 +9,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from backend.retrieval import retrieve_expert_knowledge, retrieve_expert_knowledge_semantic
+from backend.hybrid_retrieval import reciprocal_rank_fusion
 
 GOLD_SET = [
     ("What's the failure signature for pump cavitation?", "P-302"),
@@ -31,7 +32,7 @@ GOLD_SET = [
 def precision_at_k(retrieve_fn, k=3):
     hits = 0
     for query, expected_tag in GOLD_SET:
-        results = retrieve_fn(query, limit=k)
+        results = retrieve_fn(query, limit=k) if retrieve_fn != reciprocal_rank_fusion else retrieve_fn(query, k=k)
         if any(r.get("equipment_tag") == expected_tag for r in results):
             hits += 1
     return hits / len(GOLD_SET)
@@ -39,3 +40,4 @@ def precision_at_k(retrieve_fn, k=3):
 if __name__ == "__main__":
     print(f"Keyword retrieval  P@3: {precision_at_k(retrieve_expert_knowledge):.0%}")
     print(f"Semantic retrieval P@3: {precision_at_k(retrieve_expert_knowledge_semantic):.0%}")
+    print(f"Hybrid RRF P@3: {precision_at_k(reciprocal_rank_fusion):.0%}")

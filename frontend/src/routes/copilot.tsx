@@ -106,6 +106,7 @@ function Copilot() {
   const [consensus, setConsensus] = useState<ConsensusResponse | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [mobileTab, setMobileTab] = useState<"chat" | "radar">("chat");
+  const [isStreaming, setIsStreaming] = useState(false);
 
   useEffect(() => {
     if (!engineer) {
@@ -119,14 +120,7 @@ function Copilot() {
     }
   }, [search.engineer, engineersQ.data, engineer]);
 
-  const chat = useMutation({
-    mutationFn: ({ q, e }: { q: string; e: string }) => api.chat(q, e),
-    onSuccess: (data) => setMsgs((m) => [...m, { role: "assistant", text: data.answer, meta: data }]),
-    onError: (err) => {
-      setMsgs((m) => [...m, { role: "assistant", text: `Error: ${err instanceof Error ? err.message : String(err)}` }]);
-      toast.error(err instanceof Error ? err.message : "Consultation failed");
-    },
-  });
+  // chat mutation removed in favor of streaming
 
   const cons = useMutation({
     mutationFn: ({ q, e }: { q: string; e: string }) => api.consensus(q, e),
@@ -135,7 +129,7 @@ function Copilot() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [msgs, chat.isPending]);
+  }, [msgs, isStreaming]);
 
   if (engineersQ.isError) return <ErrorBlock error={engineersQ.error} />;
   if (engineersQ.isLoading) {
@@ -148,12 +142,74 @@ function Copilot() {
 
   const engObj = (engineersQ.data ?? []).find((e) => e.name === engineer);
 
-  function send(query?: string) {
+  async function send(query?: string) {
     const q = (query ?? input).trim();
-    if (!q || !engineer || chat.isPending) return;
+    if (!q || !engineer || isStreaming) return;
     setMsgs((m) => [...m, { role: "user", text: q }]);
-    chat.mutate({ q, e: engineer });
     if (!query) setInput("");
+    setIsStreaming(true);
+
+    try {
+      const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+      const res = await fetch(`${BASE}/api/chat/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q, engineer }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+
+      const assistantMsg: Msg = {
+        role: "assistant",
+        text: "",
+        meta: {
+          answer: "",
+          citations: [],
+          confidence: 90,
+          engineer,
+          related_context: [],
+          uncertainty: { sparsity: "LOW", staleness: "LOW", disagreement: "LOW", causal: "LOW", risk_score: 20 },
+        },
+      };
+
+      setMsgs((m) => [...m, assistantMsg]);
+
+      if (reader) {
+        let buffer = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const dataStr = line.slice(6);
+              if (dataStr === "[DONE]") continue;
+              try {
+                const parsed = JSON.parse(dataStr);
+                if (parsed.type === "citations") {
+                  assistantMsg.meta!.citations = parsed.data;
+                } else if (parsed.type === "token") {
+                  assistantMsg.text += parsed.data;
+                }
+                setMsgs((m) => {
+                  const newM = [...m];
+                  newM[newM.length - 1] = { ...assistantMsg };
+                  return newM;
+                });
+              } catch (e) {}
+            }
+          }
+        }
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Consultation failed");
+    } finally {
+      setIsStreaming(false);
+    }
   }
 
   function arbitrate() {
@@ -356,7 +412,7 @@ function Copilot() {
                 </div>
               ),
             )}
-            {chat.isPending && <LoadingBlock label={`${engineer} is reconstructing…`} />}
+            {isStreaming && <LoadingBlock label={`${engineer} is streaming…`} />}
           </div>
 
           {consensus && (
@@ -422,7 +478,7 @@ function Copilot() {
               </button>
               <button
                 type="submit"
-                disabled={chat.isPending || !engineer || !input.trim()}
+                disabled={isStreaming || !engineer || !input.trim()}
                 className="bg-primary text-primary-foreground px-4 py-2 font-display uppercase tracking-wider text-sm hover:bg-primary/90 disabled:opacity-40 flex items-center gap-1.5"
                 aria-label="Submit query to expert"
               >

@@ -138,6 +138,9 @@ def ingest_document(title: str, content: str, doc_type: str = "Maintenance Log",
         "failure_code": failure_code
     })
     
+    from backend.hybrid_retrieval import build_bm25_index
+    build_bm25_index()
+    
     conn.close()
     
     return {

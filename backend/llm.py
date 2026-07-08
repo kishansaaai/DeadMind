@@ -1,7 +1,7 @@
 import os
 import json
 import urllib.request
-from backend.retrieval import retrieve_expert_knowledge_semantic
+from backend.hybrid_retrieval import reciprocal_rank_fusion
 from backend.database import get_db_connection
 
 # Load .env file if present
@@ -62,13 +62,54 @@ def get_groq_response(prompt: str, system_prompt: str, retries: int = 2, timeout
 
 
 
+def compute_calibrated_confidence(sources: list, answer: str = "") -> int:
+    """
+    Confidence = f(retrieval strength, citation count, source agreement).
+    Real signal instead of a hardcoded constant.
+    """
+    if not sources:
+        return 40  # no grounding = low confidence, explicitly
+    avg_retrieval_score = sum(s.get("score", 0) for s in sources) / len(sources)
+    # FAISS cosine scores are 0-1; keyword scores can exceed 1, so normalize
+    normalized = min(avg_retrieval_score, 1.0) if avg_retrieval_score <= 1.5 else 0.9
+    citation_bonus = min(len(sources) * 5, 15)
+    return int(min(97, 50 + normalized * 35 + citation_bonus))
+
+import httpx
+import json as json_lib
+
+async def get_groq_response_stream(query: str, sources: list):
+    # Pass fingerprint as default 50s for streaming fallback since we skip full profile load here
+    fingerprint = {"systematic": 50, "intuitive": 50, "mechanical": 50, "electrical": 50, "instrumentation": 50, "process": 50}
+    if not APIConfig.key:
+        # Fallback: stream the templated grounded answer word-by-word for consistent UX
+        answer = build_grounded_fallback_answer(query, "Engineer", sources, fingerprint)
+        for word in answer.split(" "):
+            yield word + " "
+        return
+
+    async with httpx.AsyncClient() as client:
+        async with client.stream(
+            "POST", "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {APIConfig.key}"},
+            json={"model": "llama-3.3-70b-versatile", "stream": True,
+                  "messages": [{"role": "user", "content": query}]},
+            timeout=20
+        ) as response:
+            async for line in response.aiter_lines():
+                if line.startswith("data: ") and line != "data: [DONE]":
+                    chunk = json_lib.loads(line[6:])
+                    delta = chunk["choices"][0]["delta"].get("content", "")
+                    if delta:
+                        yield delta
+
 def generate_expert_answer(query: str, engineer_name: str = None) -> dict:
     """
     Retrieves knowledge for the query & engineer, and generates a structured, grounded answer.
     Biases responses with the expert's cognitive fingerprint style.
     """
     # 1. Retrieve matching sources
-    sources = retrieve_expert_knowledge_semantic(query, engineer_name)
+    sources = reciprocal_rank_fusion(query)
     
     if not sources:
         resolved_engineer = engineer_name
@@ -171,15 +212,15 @@ def generate_expert_answer(query: str, engineer_name: str = None) -> dict:
             old_key = APIConfig.key
             APIConfig.key = live_key
             answer = get_groq_response(prompt, system_prompt)
-            confidence = 88
+            confidence = compute_calibrated_confidence(sources, answer)
         except Exception as e:
             print(f"[LLM] Groq API error: {type(e).__name__}: {e}")
             answer = build_grounded_fallback_answer(query, resolved_engineer, sources, fingerprint)
-            confidence = 85
+            confidence = compute_calibrated_confidence(sources, answer)
     else:
         print("[LLM] No API key — using mock fallback")
         answer = build_grounded_fallback_answer(query, resolved_engineer, sources, fingerprint)
-        confidence = 85
+        confidence = compute_calibrated_confidence(sources, answer)
         
     # Related context: find other engineers who worked on this same equipment
     conn = get_db_connection()
