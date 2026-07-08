@@ -86,6 +86,7 @@ class ExpertAnswerResponse(BaseModel):
     confidence: int
     engineer: str
     related_context: list[str]
+    uncertainty: Optional[dict] = None
 
 
 class VoiceNotePayload(BaseModel):
@@ -95,6 +96,11 @@ class VoiceNotePayload(BaseModel):
 
 class ShiftNotePayload(BaseModel):
     note: str
+
+class FeedbackPayload(BaseModel):
+    doc_id: int
+    query: str
+    is_positive: bool
 
 # Endpoints
 @app.get("/", response_class=HTMLResponse)
@@ -300,6 +306,23 @@ async def upload_document(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/feedback")
+def submit_feedback(payload: FeedbackPayload):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("""
+        INSERT INTO feedback (doc_id, query, is_positive, timestamp)
+        VALUES (?, ?, ?, ?)
+        """, (payload.doc_id, payload.query, 1 if payload.is_positive else 0, timestamp))
+        conn.commit()
+        conn.close()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/chat", response_model=ExpertAnswerResponse)
 def chat_expert(payload: ChatQuery, request: Request):
     check_rate_limit(request)
@@ -319,22 +342,10 @@ def chat_expert(payload: ChatQuery, request: Request):
                 query = query.lower().replace(alias, row["standard_name"])
                 
         answer = generate_expert_answer(query, payload.engineer)
-        
-        # Inject uncertainty breakdown metrics dynamically and deterministically
-        query_hash = sum(ord(char) for char in query)
-        sparsity = "LOW" if len(answer["citations"]) > 1 else "HIGH"
-        staleness = "MEDIUM" if len(answer["citations"]) > 0 else "HIGH"
-        disagreement = "HIGH" if "conflict" in query.lower() or (query_hash % 10) > 6 else "LOW"
-        causal = "MEDIUM" if (query_hash % 10) > 4 else "LOW"
-        risk_score = 15 if sparsity == "LOW" else 67
-        
-        answer["uncertainty"] = {
-            "sparsity": sparsity,
-            "staleness": staleness,
-            "disagreement": disagreement,
-            "causal": causal,
-            "risk_score": risk_score
-        }
+        from backend.hybrid_retrieval import reciprocal_rank_fusion
+        from backend.uncertainty import compute_uncertainty
+        sources_for_uncertainty = reciprocal_rank_fusion(query)
+        answer["uncertainty"] = compute_uncertainty(query, sources_for_uncertainty, payload.engineer)
         
         return answer
     except Exception as e:
@@ -363,26 +374,34 @@ async def chat_expert_stream(payload: ChatQuery, request: Request):
 @app.post("/api/voice-note")
 def save_voice_note(payload: VoiceNotePayload):
     try:
+        from backend.transcription import transcribe_audio
+        try:
+            transcript = transcribe_audio(payload.audio_base64)
+            if not transcript.strip():
+                transcript = payload.transcript  # fallback to client-provided text
+        except Exception as e:
+            print(f"[STT] Whisper failed, falling back to client transcript: {e}")
+            transcript = payload.transcript
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
         import datetime
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute("""
         INSERT INTO voice_notes (engineer, audio_base64, transcript, timestamp)
         VALUES (?, ?, ?, ?)
-        """, (payload.engineer, payload.audio_base64, payload.transcript, timestamp))
+        """, (payload.engineer, payload.audio_base64, transcript, timestamp))
+        conn.commit()
+        conn.close()
         
         ingest_document(
             title=f"Voice Note Capture - {payload.engineer}",
-            content=payload.transcript,
+            content=transcript,
             doc_type="Voice Note",
             forced_author=payload.engineer
         )
         
-        conn.commit()
-        conn.close()
-        return {"status": "success", "message": "Voice note captured and indexed successfully."}
+        return {"status": "success", "message": "Voice note transcribed and indexed.", "transcript": transcript}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

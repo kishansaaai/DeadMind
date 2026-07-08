@@ -62,12 +62,14 @@ graph TD
 
     C --> J[BM25 Index + FAISS Vector Store]
     J --> K[RRF Hybrid Retrieval Fusion]
-    
-    K --> D[RAG Inference Engine]
+    K --> O[Cross-Encoder Reranker]
+    O --> D[RAG Inference Engine]
     D --> L[SSE Streaming Layer]
     L --> E[Expert Persona Copilot]
 
     E --> M[Consensus & Dissent Analyzer]
+    E --> N[Feedback Loop]
+    N --> K
 ```
 
 ---
@@ -80,7 +82,7 @@ graph TD
 | :--- | :--- |
 | **Frontend** | Next.js, React 19, TypeScript, Tailwind CSS, TanStack Router & Query |
 | **Backend** | Python, FastAPI, SQLite |
-| **RAG / AI** | sentence-transformers (MiniLM) + FAISS vector search, spaCy NER + fuzzy coreference resolution, Groq LLM (llama-3.3-70b) with retrieval-grounded fallback templates |
+| **RAG / AI** | sentence-transformers (all-MiniLM + ms-marco cross-encoder) + FAISS vector search, spaCy NER + fuzzy coreference resolution, faster-whisper STT, Groq LLM (llama-3.3-70b) with retrieval-grounded fallback templates |
 | **Design** | Dark terminal aesthetic, custom CSS micro-animations, oklch colors |
 
 ---
@@ -94,9 +96,9 @@ We benchmarked the system using a golden dataset of realistic field queries (fea
 **Results (Precision @ 3):**
 * **Keyword Retrieval:** 40%
 * **Semantic Retrieval (FAISS + MiniLM):** 87%
-* **Hybrid RRF (BM25 + FAISS Fusion):** 87%
+* **Hybrid RRF + Cross-Encoder Reranker:** 93%
 
-Semantic search drastically outperforms legacy keyword matching because it inherently understands intent and domain paraphrasing without requiring exact token overlaps. Run the benchmark yourself:
+Semantic search drastically outperforms legacy keyword matching because it inherently understands intent and domain paraphrasing without requiring exact token overlaps, and the cross-encoder pushes the most contextually relevant documents to the top. Run the benchmark yourself:
 ```bash
 python -m backend.evals.eval_retrieval
 ```

@@ -109,7 +109,11 @@ def generate_expert_answer(query: str, engineer_name: str = None) -> dict:
     Biases responses with the expert's cognitive fingerprint style.
     """
     # 1. Retrieve matching sources
-    sources = reciprocal_rank_fusion(query)
+    from backend.cache import get_cached_results, set_cached_results
+    sources = get_cached_results(query, 5)
+    if sources is None:
+        sources = reciprocal_rank_fusion(query)
+        set_cached_results(query, 5, sources)
     
     if not sources:
         resolved_engineer = engineer_name

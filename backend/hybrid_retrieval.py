@@ -16,6 +16,18 @@ def build_bm25_index():
     corpus = [tokenize(d["title"] + " " + d["content"]) for d in _bm25_docs]
     _bm25_index = BM25Okapi(corpus) if corpus else None
 
+def get_feedback_scores():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT doc_id, SUM(CASE WHEN is_positive=1 THEN 1 ELSE -1 END) as net_score
+    FROM feedback
+    GROUP BY doc_id
+    """)
+    scores = {row["doc_id"]: row["net_score"] for row in cursor.fetchall()}
+    conn.close()
+    return scores
+
 def reciprocal_rank_fusion(query: str, k: int = 5, rrf_k: int = 60):
     if _bm25_index is None:
         build_bm25_index()
@@ -34,6 +46,13 @@ def reciprocal_rank_fusion(query: str, k: int = 5, rrf_k: int = 60):
     for rank, doc_id in enumerate(vector_ids):
         fused_scores[doc_id] = fused_scores.get(doc_id, 0) + 1 / (rrf_k + rank)
 
+    # Apply feedback boosting
+    feedback_scores = get_feedback_scores()
+    for doc_id in fused_scores:
+        net_feedback = feedback_scores.get(doc_id, 0)
+        multiplier = max(0.5, min(2.0, 1.0 + (net_feedback * 0.2)))
+        fused_scores[doc_id] *= multiplier
+
     id_to_meta = {d["id"]: d for d in _bm25_docs}
     id_to_vecmeta = {r["id"]: r for r in vector_results}
     ranked_ids = sorted(fused_scores, key=lambda i: -fused_scores[i])[:k]
@@ -51,4 +70,7 @@ def reciprocal_rank_fusion(query: str, k: int = 5, rrf_k: int = 60):
             meta["author"] = meta["engineer_author"]
         results.append({**meta, "id": doc_id, "fused_score": fused_scores[doc_id], "score": fused_scores[doc_id]})
     
-    return results
+    from backend.reranker import rerank_results
+    reranked_results = rerank_results(query, results)
+    
+    return reranked_results[:k]

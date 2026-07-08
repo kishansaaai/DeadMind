@@ -4,7 +4,7 @@ import os
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "deadmind.db")
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -168,6 +168,18 @@ def init_db():
         step_desc TEXT,
         compliance_rate INTEGER, -- Percentage 0-100
         workaround_detected TEXT
+    )
+    """)
+
+    # 12. Document Feedback
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        doc_id INTEGER,
+        query TEXT,
+        is_positive INTEGER,
+        timestamp TEXT,
+        FOREIGN KEY (doc_id) REFERENCES documents(id)
     )
     """)
 

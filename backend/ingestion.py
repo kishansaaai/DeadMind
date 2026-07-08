@@ -138,11 +138,10 @@ def ingest_document(title: str, content: str, doc_type: str = "Maintenance Log",
         "equipment_tag": equipment_tag, 
         "failure_code": failure_code
     })
+    conn.close()
     
     from backend.hybrid_retrieval import build_bm25_index
     build_bm25_index()
-    
-    conn.close()
     
     return {
         "id": doc_id,

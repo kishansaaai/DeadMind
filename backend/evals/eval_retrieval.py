@@ -40,4 +40,4 @@ def precision_at_k(retrieve_fn, k=3):
 if __name__ == "__main__":
     print(f"Keyword retrieval  P@3: {precision_at_k(retrieve_expert_knowledge):.0%}")
     print(f"Semantic retrieval P@3: {precision_at_k(retrieve_expert_knowledge_semantic):.0%}")
-    print(f"Hybrid RRF P@3: {precision_at_k(reciprocal_rank_fusion):.0%}")
+    print(f"Hybrid RRF + Cross-Encoder Reranker P@3: {precision_at_k(reciprocal_rank_fusion):.0%}")
