@@ -13,8 +13,14 @@ def run():
             check=True,
             cwd=os.path.dirname(os.path.abspath(__file__))
         )
+        print("Downloading spaCy model...")
+        subprocess.run(
+            [sys.executable, "-m", "spacy", "download", "en_core_web_sm"],
+            check=True,
+            cwd=os.path.dirname(os.path.abspath(__file__))
+        )
     except Exception as e:
-        print("Failed to run pip install. Please verify requirements manually.", e)
+        print("Failed to install requirements or spacy model:", e)
 
     # 2. Seed database
     print("Seeding database...")
