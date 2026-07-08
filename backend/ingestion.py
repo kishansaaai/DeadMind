@@ -3,8 +3,25 @@ from datetime import datetime
 from backend.database import get_db_connection
 
 import spacy
+try:
+    spacy.require_gpu()
+except:
+    pass
 from rapidfuzz import fuzz, process
 from backend.vector_store import store
+import threading
+
+_bm25_timer = None
+_bm25_lock = threading.Lock()
+
+def schedule_bm25_rebuild():
+    global _bm25_timer
+    with _bm25_lock:
+        if _bm25_timer is not None:
+            _bm25_timer.cancel()
+        from backend.hybrid_retrieval import build_bm25_index
+        _bm25_timer = threading.Timer(2.0, build_bm25_index)
+        _bm25_timer.start()
 
 nlp = spacy.load("en_core_web_sm")
 
@@ -140,8 +157,7 @@ def ingest_document(title: str, content: str, doc_type: str = "Maintenance Log",
     })
     conn.close()
     
-    from backend.hybrid_retrieval import build_bm25_index
-    build_bm25_index()
+    schedule_bm25_rebuild()
     
     return {
         "id": doc_id,

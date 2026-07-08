@@ -8,21 +8,39 @@ from typing import Optional, List
 import time
 from collections import defaultdict
 
-# Simple In-Memory Rate Limiter (10 requests per minute for AI endpoints)
-RATE_LIMIT_STRIKES = defaultdict(list)
+REDIS_URL = os.environ.get("REDIS_URL")
 AI_LIMIT = 10
 AI_WINDOW = 60
 
-def check_rate_limit(request: Request):
-    client_ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    RATE_LIMIT_STRIKES[client_ip] = [t for t in RATE_LIMIT_STRIKES[client_ip] if now - t < AI_WINDOW]
-    if len(RATE_LIMIT_STRIKES[client_ip]) >= AI_LIMIT:
-        raise HTTPException(
-            status_code=429,
-            detail="Too Many Requests. AI endpoints are rate-limited to 10 requests per minute."
-        )
-    RATE_LIMIT_STRIKES[client_ip].append(now)
+if REDIS_URL:
+    import redis
+    r = redis.from_url(REDIS_URL)
+
+    def check_rate_limit(request: Request):
+        client_ip = request.client.host if request.client else "unknown"
+        key = f"ratelimit:{client_ip}"
+        now = time.time()
+        pipe = r.pipeline()
+        pipe.zremrangebyscore(key, 0, now - AI_WINDOW)
+        pipe.zadd(key, {str(now): now})
+        pipe.zcard(key)
+        pipe.expire(key, AI_WINDOW)
+        _, _, count, _ = pipe.execute()
+        if count > AI_LIMIT:
+            raise HTTPException(429, "Too Many Requests")
+else:
+    # Simple In-Memory Rate Limiter (10 requests per minute for AI endpoints)
+    RATE_LIMIT_STRIKES = defaultdict(list)
+    def check_rate_limit(request: Request):
+        client_ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        RATE_LIMIT_STRIKES[client_ip] = [t for t in RATE_LIMIT_STRIKES[client_ip] if now - t < AI_WINDOW]
+        if len(RATE_LIMIT_STRIKES[client_ip]) >= AI_LIMIT:
+            raise HTTPException(
+                status_code=429,
+                detail="Too Many Requests. AI endpoints are rate-limited to 10 requests per minute."
+            )
+        RATE_LIMIT_STRIKES[client_ip].append(now)
 from typing import Optional, List
 
 from backend.database import init_db, get_db_connection

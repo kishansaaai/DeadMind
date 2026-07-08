@@ -8,7 +8,12 @@ MODEL_NAME = "all-MiniLM-L6-v2"
 INDEX_PATH = "backend/data/faiss.index"
 META_PATH = "backend/data/faiss_meta.pkl"
 
+import threading
+
 _model = None
+_vs_lock = threading.Lock()
+_save_timer = None
+
 def get_model():
     global _model
     if _model is None:
@@ -29,16 +34,26 @@ class VectorStore:
                 self.metadata = pickle.load(f)
 
     def save(self):
-        os.makedirs(os.path.dirname(INDEX_PATH), exist_ok=True)
-        faiss.write_index(self.index, INDEX_PATH)
-        with open(META_PATH, "wb") as f:
-            pickle.dump(self.metadata, f)
+        with _vs_lock:
+            os.makedirs(os.path.dirname(INDEX_PATH), exist_ok=True)
+            faiss.write_index(self.index, INDEX_PATH)
+            with open(META_PATH, "wb") as f:
+                pickle.dump(self.metadata, f)
+
+    def schedule_save(self):
+        global _save_timer
+        with _vs_lock:
+            if _save_timer is not None:
+                _save_timer.cancel()
+            _save_timer = threading.Timer(2.0, self.save)
+            _save_timer.start()
 
     def add_document(self, doc_id: int, text: str, meta: dict):
         vec = get_model().encode([text], normalize_embeddings=True)
-        self.index.add(np.array(vec, dtype="float32"))
-        self.metadata.append({**meta, "id": doc_id})
-        self.save()
+        with _vs_lock:
+            self.index.add(np.array(vec, dtype="float32"))
+            self.metadata.append({**meta, "id": doc_id})
+        self.schedule_save()
 
     def search(self, query: str, k: int = 5, engineer_filter: str = None):
         if self.index.ntotal == 0:
