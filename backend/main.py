@@ -103,6 +103,18 @@ def startup_event():
     from backend.hybrid_retrieval import build_bm25_index
     build_bm25_index()
 
+    # Warm the embedding + reranker models synchronously before accepting
+    # traffic, so concurrent cold-start requests never race on lazy
+    # construction (see backend/vector_store.py get_model() and
+    # backend/reranker.py get_reranker() for the thread-safety fix itself —
+    # this just avoids relying on it under normal startup conditions).
+    print("Warming embedding + reranker models before accepting traffic...")
+    from backend.vector_store import get_model
+    from backend.reranker import get_reranker
+    get_model()
+    get_reranker()
+    print("Models warm. Server ready.")
+
 # Setup pathing
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

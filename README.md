@@ -156,15 +156,22 @@ python -m backend.evals.load_test_concurrent
 
 *Rate limit temporarily raised for this benchmark only (`AI_RATE_LIMIT=1000`) to measure the pipeline's raw concurrent capacity, separate from the production default of 10 req/min/IP, which exists to control LLM API cost, not because the pipeline can't handle more.*
 
+*(Note: The initial Phase 3 run failed with a PyTorch "meta tensor" error under concurrent load. Root cause: `get_model()` in `backend/vector_store.py` used an unguarded check-then-act lazy-singleton pattern, so concurrent cold-start requests could race to construct the embedding model simultaneously. Fixed with double-checked locking (see `_model_lock` in `backend/vector_store.py` and `backend/reranker.py`) plus startup-time model warming in `backend/main.py`'s startup event. Rerun results below.)*
+
 ```text
 ## Phase 3 -- AI Pipeline at Full Concurrency (50 simultaneous chat requests, rate limit raised for benchmark only)
 
-No successful requests recorded.
-
-[!] Fewer than 90% of Phase 3 requests succeeded. This usually means AI_RATE_LIMIT was not raised on the server before running this script.
-    Restart the server with:  $env:AI_RATE_LIMIT=1000; python run.py
+| Metric | Value |
+|---|---|
+| Concurrent users | 50 |
+| Total requests | 50 |
+| Successful | 50 (100%) |
+| Wall clock time | 23.31s |
+| Throughput | 2.1 req/sec |
+| p50 latency | 12128ms |
+| p95 latency | 22073ms |
+| p99 latency | 23298ms |
 ```
-*(Note: The PyTorch CPU inference currently crashes under concurrent load with a meta tensor error on this dev machine, so we could not gather successful throughput numbers for the AI path. The production Linux environment does not suffer from this issue.)*
 
 > **Note on Postgres Verification:** The Postgres/pgvector path could not be verified end-to-end because Docker Desktop was unavailable on this dev machine to run the `pgvector` container. The fallback SQLite path is fully functional.
 

@@ -2,22 +2,33 @@ import faiss
 import numpy as np
 import pickle
 import os
+import threading
 from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 INDEX_PATH = "backend/data/faiss.index"
 META_PATH = "backend/data/faiss_meta.pkl"
 
-import threading
-
 _model = None
-_vs_lock = threading.Lock()
+_model_lock = threading.Lock()          # NEW — guards model construction only
+_vs_lock = threading.Lock()             # existing — guards FAISS index mutation
 _save_timer = None
 
 def get_model():
+    """
+    Thread-safe lazy singleton. Double-checked locking: the fast path (model
+    already loaded) takes no lock at all, so this adds zero overhead to the
+    hot path — the lock is only contended during the brief cold-start window
+    before the first model finishes constructing.
+    """
     global _model
-    if _model is None:
-        _model = SentenceTransformer(MODEL_NAME)
+    if _model is not None:          # fast path, no lock, common case
+        return _model
+    with _model_lock:
+        if _model is None:          # re-check inside the lock — another
+                                      # thread may have finished construction
+                                      # while we were waiting for the lock
+            _model = SentenceTransformer(MODEL_NAME)
     return _model
 
 class VectorStore:
