@@ -72,4 +72,71 @@ class VectorStore:
                 break
         return results
 
-store = VectorStore()
+
+class PgVectorStore:
+    """
+    Production vector store backed by pgvector (Postgres).
+    Selected automatically when DATABASE_URL is set to a postgres:// URL.
+    Shares the exact same public interface as VectorStore so all callers
+    are backend-agnostic.
+    """
+
+    def __init__(self, dim: int = 384):
+        self.dim = dim
+        from backend.db_engine import ensure_pgvector_schema
+        ensure_pgvector_schema()
+
+    def add_document(self, doc_id: int, text: str, meta: dict):
+        vec = get_model().encode([text], normalize_embeddings=True)[0].tolist()
+        from backend.db_engine import get_conn
+        from sqlalchemy import text as sa_text
+        with get_conn() as conn:
+            conn.execute(
+                sa_text("""
+                    INSERT INTO document_embeddings (doc_id, embedding)
+                    VALUES (:doc_id, :embedding)
+                    ON CONFLICT (doc_id) DO UPDATE SET embedding = EXCLUDED.embedding
+                """),
+                {"doc_id": doc_id, "embedding": str(vec)},
+            )
+            conn.commit()
+
+    def search(self, query: str, k: int = 5, engineer_filter: str = None):
+        qvec = get_model().encode([query], normalize_embeddings=True)[0].tolist()
+        from backend.db_engine import get_conn
+        from sqlalchemy import text as sa_text
+        with get_conn() as conn:
+            rows = conn.execute(
+                sa_text("""
+                    SELECT d.id, d.title, d.content,
+                           d.engineer_author AS author,
+                           d.doc_type, d.equipment_tag, d.failure_code,
+                           1 - (e.embedding <=> :qvec) AS score
+                    FROM document_embeddings e
+                    JOIN documents d ON d.id = e.doc_id
+                    ORDER BY e.embedding <=> :qvec
+                    LIMIT :k
+                """),
+                {"qvec": str(qvec), "k": k * 3},
+            ).fetchall()
+        results = []
+        for r in rows:
+            row_dict = dict(r._mapping)
+            if (
+                engineer_filter
+                and engineer_filter != "Auto-Route"
+                and row_dict.get("author") != engineer_filter
+            ):
+                continue
+            results.append(row_dict)
+            if len(results) >= k:
+                break
+        return results
+
+
+# ── Module-level singleton ──────────────────────────────────────────────────
+# Selects the backend based on DATABASE_URL at import time.
+# Demo mode (no env var): VectorStore — local FAISS, zero config.
+# Prod mode (DATABASE_URL=postgres://...): PgVectorStore — shared pgvector.
+from backend.db_engine import USE_POSTGRES
+store = PgVectorStore() if USE_POSTGRES else VectorStore()

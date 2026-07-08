@@ -48,15 +48,8 @@ from backend.ingestion import ingest_document
 from backend.llm import generate_expert_answer
 
 from backend.db_engine import USE_POSTGRES
-
-if USE_POSTGRES:
-    raise RuntimeError(
-        "FATAL: USE_POSTGRES=true but the Postgres query layer is not "
-        "implemented. The app will not start against Postgres yet. "
-        "Unset USE_POSTGRES / DATABASE_URL to run on SQLite, or see "
-        "backend/db_engine.py for scaffold status and finish the "
-        "SQLAlchemy migration before enabling this flag."
-    )
+# Dual-mode: SQLite (demo) or Postgres+pgvector (prod) — both paths are now wired.
+# vector_store.py selects PgVectorStore vs VectorStore at import time automatically.
 
 # Initialize database
 init_db()
@@ -471,22 +464,34 @@ def get_lessons_learned():
     patterns = detect_patterns()
     return {"patterns": patterns, "count": len(patterns)}
 
-from backend.ocr_ingestion import ocr_scanned_document, parse_pid_symbols
+from backend.tasks import process_ocr_scan_task, parse_pid_symbols_task, CELERY_BROKER_URL
 
 @app.post("/api/ingest-scan")
 async def ingest_scan(file: UploadFile = File(...), engineer: str = Form(...)):
-    """OCR ingestion for scanned inspection forms / faxed shift logs."""
+    """
+    OCR ingestion for scanned inspection forms / faxed shift logs.
+    Demo mode: synchronous.  Prod mode (CELERY_BROKER_URL set): async Celery task.
+    """
     contents = await read_and_validate_upload(file)
     is_pdf = file.filename.lower().endswith(".pdf")
-    result = ocr_scanned_document(contents, file.filename, engineer, is_pdf=is_pdf)
-    return result
+    hex_bytes = contents.hex()
+    if CELERY_BROKER_URL:
+        task = process_ocr_scan_task.delay(hex_bytes, file.filename, engineer, is_pdf)
+        return {"status": "queued", "task_id": task.id}
+    return process_ocr_scan_task(hex_bytes, file.filename, engineer, is_pdf)
 
 @app.post("/api/ingest-pid")
 async def ingest_pid(file: UploadFile = File(...)):
-    """Basic CV symbol/line localization for P&ID drawings."""
+    """
+    Basic CV symbol/line localization for P&ID drawings.
+    Demo mode: synchronous.  Prod mode: async Celery task.
+    """
     contents = await read_and_validate_upload(file)
-    result = parse_pid_symbols(contents)
-    return result
+    hex_bytes = contents.hex()
+    if CELERY_BROKER_URL:
+        task = parse_pid_symbols_task.delay(hex_bytes)
+        return {"status": "queued", "task_id": task.id}
+    return parse_pid_symbols_task(hex_bytes)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
