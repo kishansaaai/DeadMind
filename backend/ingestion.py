@@ -2,6 +2,37 @@ import re
 from datetime import datetime
 from backend.database import get_db_connection
 
+import spacy
+from rapidfuzz import fuzz, process
+from backend.vector_store import store
+
+nlp = spacy.load("en_core_web_sm")
+
+def build_alias_index(conn):
+    cursor = conn.cursor()
+    cursor.execute("SELECT tag, name FROM equipment_nodes")
+    rows = cursor.fetchall()
+    return {r["tag"]: {r["tag"], r["name"], r["name"].replace(" ", "-").upper()} for r in rows}
+
+def resolve_coreference(mention: str, alias_index: dict, threshold: int = 80) -> str | None:
+    candidates = {alias: tag for tag, aliases in alias_index.items() for alias in aliases}
+    match, score, _ = process.extractOne(
+        mention, candidates.keys(), scorer=fuzz.token_sort_ratio
+    ) or (None, 0, None)
+    if match and score >= threshold:
+        return candidates[match]
+    return None
+
+def extract_entities_nlp(text: str, alias_index: dict):
+    doc = nlp(text)
+    equipment_mentions = [ent.text for ent in doc.ents if ent.label_ in ("ORG", "PRODUCT", "FAC")]
+    resolved_tags = list({
+        resolve_coreference(m, alias_index) for m in equipment_mentions
+        if resolve_coreference(m, alias_index)
+    })
+    persons = [ent.text for ent in doc.ents if ent.label_ == "PERSON"]
+    return {"resolved_equipment_tags": resolved_tags, "person_mentions": persons}
+
 # Common industrial equipment tag patterns, e.g., B-101, P-302, C-104, V-205
 EQUIPMENT_PATTERN = re.compile(r'\b([A-Z]{1,3}-\d{3,4})\b')
 # Common failure codes, e.g. F-402, E-101
@@ -69,6 +100,18 @@ def ingest_document(title: str, content: str, doc_type: str = "Maintenance Log",
     conn = get_db_connection()
     cursor = conn.cursor()
     
+    # NLP extraction
+    alias_index = build_alias_index(conn)
+    nlp_entities = extract_entities_nlp(content, alias_index)
+    
+    # Merge exact regex tags and NLP fuzzy tags
+    merged_tags = list(set(entities["equipment_tags"] + nlp_entities["resolved_equipment_tags"]))
+    equipment_tag = merged_tags[0] if merged_tags else "Unassigned"
+    
+    # Also use NLP person if regex missed author
+    if author == "System Ingestion" and nlp_entities["person_mentions"]:
+        author = nlp_entities["person_mentions"][0]
+
     # Ensure engineer exists in the system
     cursor.execute("SELECT name FROM engineers WHERE name = ?", (author,))
     if not cursor.fetchone() and author != "System Ingestion":
@@ -87,6 +130,14 @@ def ingest_document(title: str, content: str, doc_type: str = "Maintenance Log",
     
     doc_id = cursor.lastrowid
     conn.commit()
+    
+    store.add_document(doc_id, title + " " + content, {
+        "title": title, 
+        "author": author, 
+        "equipment_tag": equipment_tag, 
+        "failure_code": failure_code
+    })
+    
     conn.close()
     
     return {
@@ -95,5 +146,6 @@ def ingest_document(title: str, content: str, doc_type: str = "Maintenance Log",
         "author": author,
         "equipment_tag": equipment_tag,
         "failure_code": failure_code,
-        "confidence": 0.95 if entities["author"] else 0.70
+        "confidence": 0.95 if entities["author"] else 0.70,
+        "resolved_aliases": nlp_entities["resolved_equipment_tags"]
     }

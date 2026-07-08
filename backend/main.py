@@ -53,6 +53,21 @@ class ChatQuery(BaseModel):
     query: str
     engineer: Optional[str] = "Auto-Route"
 
+class Citation(BaseModel):
+    id: int
+    title: str
+    author: str
+    equipment_tag: str
+    failure_code: str
+
+class ExpertAnswerResponse(BaseModel):
+    answer: str
+    citations: list[Citation]
+    confidence: int
+    engineer: str
+    related_context: list[str]
+
+
 class VoiceNotePayload(BaseModel):
     engineer: str
     audio_base64: str
@@ -318,7 +333,7 @@ async def upload_document(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/chat")
+@app.post("/api/chat", response_model=ExpertAnswerResponse)
 def chat_expert(payload: ChatQuery, request: Request):
     check_rate_limit(request)
     try:

@@ -1,5 +1,6 @@
 import re
 from backend.database import get_db_connection
+from backend.vector_store import store
 
 STOP_WORDS = {"a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "arent", "as", "at", 
               "be", "because", "been", "before", "being", "below", "between", "both", "but", "by", "cant", "cannot", "could", 
@@ -83,3 +84,13 @@ def retrieve_expert_knowledge(query: str, engineer_name: str = None, limit: int 
     # Sort by score descending
     scored_docs.sort(key=lambda x: x["score"], reverse=True)
     return scored_docs[:limit]
+
+def retrieve_expert_knowledge_semantic(query: str, engineer_name: str = None, limit: int = 5):
+    """Semantic retrieval via sentence-transformer embeddings + FAISS cosine similarity."""
+    results = store.search(query, k=limit, engineer_filter=engineer_name)
+    if results:
+        return results
+    # Graceful degrade: if vector index is empty (e.g. fresh clone, no ingested docs yet),
+    # fall back to the keyword method so the demo never breaks.
+    return retrieve_expert_knowledge(query, engineer_name, limit)
+
