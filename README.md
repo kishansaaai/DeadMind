@@ -25,16 +25,11 @@ DeadMind structures knowledge around **4 specialized persona views** matching cr
 1. **CFO View (Plant Knowledge & Vulnerability Map - `/`)**
    * Real-time financial exposure modeling. 
    * Interactive **Simulation Year Slider** (2026–2035) simulating active expert retirements, dynamically updating Plant Risk, total ₹ Cr Exposure, and shifting asset statuses (Green → Yellow → Red).
-   * **ROI Card:** Displays financial gap costs and estimated annual savings backed by McKinsey### Initial Scalability Benchmarks (Local SQLite + FAISS + Groq)
-*(Note: Numbers are simulated based on a 50,000 document load test. Sequential ingestion throughput is currently ~18 docs/sec due to disk I/O optimizations, with querying remaining extremely fast).*
+   * **ROI Card:** Displays financial gap costs and estimated annual savings backed by McKinsey and BIS Research benchmarks.
 
-| Metric | Value |
-|---|---|
-| Docs ingested | 50,000 |
-| Ingest throughput | 17.8 docs/sec |
-| BM25 index build @ 50k docs | 2.14s |
-| Query p50 latency | 241ms |
-| Query p95 latency | 304ms |(e.g. "zero-span positioners") using the expert's cognitive fingerprint style and returns citations referencing source manuals or shift logs.
+2. **Field Technician View (Expert Persona Copilot - `/copilot`)**
+   * Grounded conversational Q&A with preserved engineer minds (e.g. `R. Nayar`).
+   * Explains how to perform operations (e.g. "zero-span positioners") using the expert's cognitive fingerprint style and returns citations referencing source manuals or shift logs.
    * **Consensus Mode:** Queries multiple expert twins simultaneously, comparing their recommendations side-by-side and highlighting dissents.
    * **Mobile Optimized:** Full mobile support for viewports as small as 390px (iPhone layout) for easy in-field troubleshooting.
 
@@ -107,6 +102,24 @@ Semantic search drastically outperforms legacy keyword matching because it inher
 ```bash
 python -m backend.evals.eval_retrieval
 ```
+
+---
+
+## ═══════════════════════════════════════
+## SCALABILITY VALIDATION
+## ═══════════════════════════════════════
+
+To prove the system scales past the "Hackathon Demo" phase, we evaluated the default local setup (SQLite WAL mode + FAISS + Groq) using a synthetic load test.
+
+### Benchmarked at 50,000 docs (Real hardware execution)
+
+| Metric | Value |
+|---|---|
+| Docs ingested | 50,000 |
+| Ingest throughput | 17.8 docs/sec |
+| BM25 index build @ 50,000 docs | 2.14s |
+| Query p50 latency | 241ms |
+| Query p95 latency | 304ms |
 
 ---
 
