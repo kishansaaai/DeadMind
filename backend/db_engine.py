@@ -30,11 +30,14 @@ if USE_POSTGRES:
                 ON document_embeddings USING hnsw (embedding vector_cosine_ops)
             """))
 else:
-    from backend.database import get_db_connection
     @contextmanager
     def get_conn():
+        from backend.database import get_db_connection
         conn = get_db_connection()
         try:
             yield conn
         finally:
             conn.close()
+            
+    def ensure_pgvector_schema():
+        pass
