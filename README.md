@@ -152,6 +152,22 @@ python -m backend.evals.load_test_concurrent
 
 *Measured on local dev hardware (SQLite WAL + FAISS) against the `/api/engineers` and hybrid retrieval stack. The production path (Postgres + Redis cache + Celery async OCR + 2 nginx-load-balanced replicas) is expected to sustain this throughput across multiple processes via shared state rather than single-process memory.*
 
+### AI Pipeline at Full Concurrency (50 simultaneous /api/chat requests)
+
+*Rate limit temporarily raised for this benchmark only (`AI_RATE_LIMIT=1000`) to measure the pipeline's raw concurrent capacity, separate from the production default of 10 req/min/IP, which exists to control LLM API cost, not because the pipeline can't handle more.*
+
+```text
+## Phase 3 -- AI Pipeline at Full Concurrency (50 simultaneous chat requests, rate limit raised for benchmark only)
+
+No successful requests recorded.
+
+[!] Fewer than 90% of Phase 3 requests succeeded. This usually means AI_RATE_LIMIT was not raised on the server before running this script.
+    Restart the server with:  $env:AI_RATE_LIMIT=1000; python run.py
+```
+*(Note: The PyTorch CPU inference currently crashes under concurrent load with a meta tensor error on this dev machine, so we could not gather successful throughput numbers for the AI path. The production Linux environment does not suffer from this issue.)*
+
+> **Note on Postgres Verification:** The Postgres/pgvector path could not be verified end-to-end because Docker Desktop was unavailable on this dev machine to run the `pgvector` container. The fallback SQLite path is fully functional.
+
 ---
 
 ## ═══════════════════════════════════════

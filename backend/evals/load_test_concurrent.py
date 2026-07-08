@@ -1,14 +1,17 @@
 ﻿"""
 Concurrent load test against the live FastAPI server.
 
-Run the server first:   python run.py
-Then run this script:   python -m backend.evals.load_test_concurrent
+Standard run (Phases 1-2, respects production rate limits):
+    python run.py
+    python -m backend.evals.load_test_concurrent
 
-Two test phases:
-  Phase 1 — 50 concurrent workers hitting /api/engineers (fast DB read, no
-             rate-limiting) to measure raw request-handling throughput.
-  Phase 2 — 10 concurrent workers hitting /api/chat (AI inference, rate-limited
-             to 10 req/min per IP by design) to measure AI pipeline latency.
+Full AI-path benchmark (Phase 3, raises rate limit for this run ONLY --
+do not deploy with AI_RATE_LIMIT set this high; it exists purely to let
+the load test measure the pipeline's real concurrent capacity separately
+from the deliberate production throttle):
+    $env:AI_RATE_LIMIT="1000"; python run.py          # Windows / PowerShell
+    AI_RATE_LIMIT=1000 python run.py                  # Linux / macOS
+    python -m backend.evals.load_test_concurrent
 """
 import asyncio
 import statistics
@@ -41,7 +44,7 @@ async def worker_fast(client: httpx.AsyncClient, worker_id: int, latencies: list
 
 
 async def worker_chat(client: httpx.AsyncClient, worker_id: int, latencies: list):
-    """Hit /api/chat once — respects existing rate-limit."""
+    """Hit /api/chat once -- respects production rate limit."""
     q = QUERIES[worker_id % len(QUERIES)]
     t0 = time.time()
     try:
@@ -57,9 +60,35 @@ async def worker_chat(client: httpx.AsyncClient, worker_id: int, latencies: list
     latencies.append(time.time() - t0)
 
 
+async def worker_chat_full(client: httpx.AsyncClient, worker_id: int, latencies: list):
+    """Hit /api/chat once -- used for the FULL-CONCURRENCY AI-path benchmark.
+
+    Requires AI_RATE_LIMIT to be raised above CONCURRENCY_CHAT_FULL on the
+    server, otherwise most requests will 429. This is intentional -- this
+    phase measures the AI pipeline's raw concurrent capacity, not the
+    production rate-limit policy (that is a separate, deliberate throttle).
+    Start the server with: AI_RATE_LIMIT=1000 python run.py
+    """
+    q = QUERIES[worker_id % len(QUERIES)]
+    t0 = time.time()
+    try:
+        resp = await client.post(
+            "/api/chat",
+            json={"query": q, "engineer_name": "Auto-Route"},
+            timeout=60,
+        )
+        resp.raise_for_status()
+    except Exception as e:
+        print(f"[chat-full-worker {worker_id}] failed: {e}")
+        return
+    latencies.append(time.time() - t0)
+
+
 def print_table(title: str, concurrency: int, total: int, latencies: list, wall: float):
     if not latencies:
-        print(f"\n{title}: No successful requests.\n")
+        print(f"\n## {title}\n")
+        print("No successful requests recorded.")
+        print()
         return
     lat = sorted(latencies)
     n = len(lat)
@@ -72,7 +101,7 @@ def print_table(title: str, concurrency: int, total: int, latencies: list, wall:
     print("|---|---|")
     print(f"| Concurrent users | {concurrency} |")
     print(f"| Total requests | {total} |")
-    print(f"| Successful | {n} |")
+    print(f"| Successful | {n} ({n * 100 // total}%) |")
     print(f"| Wall clock time | {wall:.2f}s |")
     print(f"| Throughput | {n / wall:.1f} req/sec |")
     print(f"| p50 latency | {p50 * 1000:.0f}ms |")
@@ -93,11 +122,11 @@ async def run():
         ])
         wall_fast = time.time() - t0
         print_table(
-            "Phase 1 — Concurrent DB/Retrieval Load (50 users × 5 requests)",
+            "Phase 1 -- Concurrent DB/Retrieval Load (50 users x 5 requests)",
             CONCURRENCY_FAST, CONCURRENCY_FAST * REPS, lat_fast, wall_fast,
         )
 
-        # --- Phase 2: AI pipeline, 10 workers × 1 request each ---
+        # --- Phase 2: AI pipeline, 10 workers x 1 request (respects rate limit) ---
         CONCURRENCY_CHAT = 10
         lat_chat: list = []
         t0 = time.time()
@@ -106,9 +135,29 @@ async def run():
         ])
         wall_chat = time.time() - t0
         print_table(
-            "Phase 2 — Concurrent AI Pipeline (10 simultaneous chat requests)",
+            "Phase 2 -- Concurrent AI Pipeline (10 simultaneous chat requests, production rate limit active)",
             CONCURRENCY_CHAT, CONCURRENCY_CHAT, lat_chat, wall_chat,
         )
+
+        # --- Phase 3: AI pipeline at FULL concurrency (requires rate-limit override) ---
+        CONCURRENCY_CHAT_FULL = 50
+        lat_chat_full: list = []
+        t0 = time.time()
+        await asyncio.gather(*[
+            worker_chat_full(client, w, lat_chat_full) for w in range(CONCURRENCY_CHAT_FULL)
+        ])
+        wall_chat_full = time.time() - t0
+        print_table(
+            "Phase 3 -- AI Pipeline at Full Concurrency (50 simultaneous chat requests, "
+            "rate limit raised for benchmark only)",
+            CONCURRENCY_CHAT_FULL, CONCURRENCY_CHAT_FULL, lat_chat_full, wall_chat_full,
+        )
+        if len(lat_chat_full) < CONCURRENCY_CHAT_FULL * 0.9:
+            print(
+                "[!] Fewer than 90% of Phase 3 requests succeeded. This usually means "
+                "AI_RATE_LIMIT was not raised on the server before running this script.\n"
+                "    Restart the server with:  $env:AI_RATE_LIMIT=1000; python run.py\n"
+            )
 
 
 if __name__ == "__main__":

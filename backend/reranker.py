@@ -1,6 +1,8 @@
-from sentence_transformers import CrossEncoder
+﻿from sentence_transformers import CrossEncoder
+import threading
 
 _reranker_model = None
+_lock = threading.Lock()
 
 def get_reranker():
     global _reranker_model
@@ -19,7 +21,9 @@ def rerank_results(query: str, docs: list, relative_gap: float = 4.0) -> list:
         return docs
         
     pairs = [[query, doc.get("content", "")] for doc in docs]
-    scores = get_reranker().predict(pairs)
+    
+    with _lock:
+        scores = get_reranker().predict(pairs)
     
     # Assign scores back to docs
     for i, doc in enumerate(docs):

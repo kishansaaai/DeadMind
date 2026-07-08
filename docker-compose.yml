@@ -11,12 +11,14 @@ services:
     depends_on: [backend]
 
   # ── Production profile ── `docker compose --profile prod up` ─────────────
-  # Two stateless backend replicas sharing Postgres + Redis, fronted by nginx.
+  # 2 stateless API replicas + 1 Celery worker (OCR/CV jobs), sharing
+  # Postgres + Redis, fronted by nginx round-robin LB.
   backend-prod-1:
     build: .
     environment:
       - DATABASE_URL=postgresql://deadmind:deadmind@postgres:5432/deadmind
       - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
     depends_on: [postgres, redis]
     profiles: ["prod"]
 
@@ -25,6 +27,17 @@ services:
     environment:
       - DATABASE_URL=postgresql://deadmind:deadmind@postgres:5432/deadmind
       - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on: [postgres, redis]
+    profiles: ["prod"]
+
+  celery-worker:
+    build: .
+    command: celery -A backend.tasks.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - DATABASE_URL=postgresql://deadmind:deadmind@postgres:5432/deadmind
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
     depends_on: [postgres, redis]
     profiles: ["prod"]
 

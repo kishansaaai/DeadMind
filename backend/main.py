@@ -9,8 +9,8 @@ import time
 from collections import defaultdict
 
 REDIS_URL = os.environ.get("REDIS_URL")
-AI_LIMIT = 10
-AI_WINDOW = 60
+AI_LIMIT = int(os.environ.get("AI_RATE_LIMIT", "10"))
+AI_WINDOW = int(os.environ.get("AI_RATE_WINDOW_SECONDS", "60"))
 
 if REDIS_URL:
     import redis
