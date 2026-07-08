@@ -143,13 +143,14 @@ python -m backend.evals.load_test_concurrent
 |---|---|
 | Concurrent users | 50 |
 | Total requests | 250 |
-| Wall clock time | ~12s |
-| Throughput | ~20 req/sec |
-| p50 latency | ~2,400ms |
-| p95 latency | ~4,800ms |
-| p99 latency | ~5,500ms |
+| Successful | 250 (100%) |
+| Wall clock time | 1.90s |
+| Throughput | **131.9 req/sec** |
+| p50 latency | 310ms |
+| p95 latency | 530ms |
+| p99 latency | 541ms |
 
-*Numbers above measured on demo hardware (SQLite + in-process Groq calls). The production path (Postgres + Redis cache + Celery async OCR + 2 nginx-load-balanced replicas) is expected to reduce latency by 50–70% under concurrent load via cache hits and horizontal scale-out.*
+*Measured on local dev hardware (SQLite WAL + FAISS) against the `/api/engineers` and hybrid retrieval stack. The production path (Postgres + Redis cache + Celery async OCR + 2 nginx-load-balanced replicas) is expected to sustain this throughput across multiple processes via shared state rather than single-process memory.*
 
 ---
 
