@@ -189,7 +189,8 @@ def generate_expert_answer(query: str, engineer_name: str = None) -> dict:
             "title": s.get("title", "Untitled"),
             "author": s.get("author", "Unknown"),
             "equipment_tag": s.get("equipment_tag", "N/A"),
-            "failure_code": s.get("failure_code", "None")
+            "failure_code": s.get("failure_code", "None"),
+            "rerank_score": s.get("rerank_score")
         })
         
     # Format persona style based on fingerprint
